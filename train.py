@@ -1,0 +1,451 @@
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.autograd import Variable
+import torch.optim
+import torch.optim.lr_scheduler as lr_scheduler
+import time
+import os
+import glob
+
+import configs
+import backbone
+from data.datamgr import SimpleDataManager, SetDataManager
+from methods.baselinetrain import BaselineTrain
+from methods.baselinefinetune import BaselineFinetune
+from methods.protonet import ProtoNet
+from methods.matchingnet import MatchingNet
+from methods.relationnet import RelationNet
+from methods.maml import MAML
+from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file
+from tensorboardX import SummaryWriter
+import json
+from model_resnet import *
+from copy_local import *
+
+def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):    
+    if params.optimization == 'Adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=params.lr)
+    elif params.optimization == 'SGD':
+        optimizer = torch.optim.SGD(model.parameters(), lr=params.lr)
+    elif params.optimization == 'Nesterov':
+        optimizer = torch.optim.SGD(model.parameters(), lr=params.lr, nesterov=True, momentum=0.9, weight_decay=params.wd)
+    else:
+       raise ValueError('Unknown optimization, please define by yourself')
+
+    max_acc = 0       
+    writer = SummaryWriter(log_dir=params.checkpoint_dir)
+    for epoch in range(start_epoch,stop_epoch):
+        model.train()
+        model.train_loop(epoch, base_loader, optimizer, writer) #model are called by reference, no need to return 
+        model.eval()
+
+        if not os.path.isdir(params.checkpoint_dir):
+            os.makedirs(params.checkpoint_dir)
+
+        if params.jigsaw:
+            acc, acc_jigsaw = model.test_loop( val_loader)
+            writer.add_scalar('val/acc', acc, epoch)
+            writer.add_scalar('val/acc_jigsaw', acc_jigsaw, epoch)
+        elif params.rotation:
+            acc, acc_rotation = model.test_loop( val_loader)
+            writer.add_scalar('val/acc', acc, epoch)
+            writer.add_scalar('val/acc_rotation', acc_rotation, epoch)
+        else:    
+            acc = model.test_loop( val_loader)
+            writer.add_scalar('val/acc', acc, epoch)
+        if acc > max_acc : #for baseline and baseline++, we don't use validation here so we let acc = -1
+            print("best model! save...")
+            max_acc = acc
+            outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
+            torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
+
+        if ((epoch+1) % params.save_freq==0) or (epoch==stop_epoch-1):
+            outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
+            torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
+
+    # return model
+
+if __name__=='__main__':
+    np.random.seed(10)
+    params = parse_args('train')
+
+    isAircraft = (params.dataset == 'aircrafts')
+    ## copy dataset to local for gypsum
+    # if params.gypsum and (params.dataset in ['CUB','cars','aircrafts','flowers','dogs']):
+    if params.gypsum and ('Imagenet' not in params.dataset):
+        print('Copying dataset to local...')
+        if '_' in params.dataset:
+            dset = params.dataset.split('_')[0]
+        else:
+            dset = params.dataset
+        setup_dataset(dset)
+        print('Finished copying dataset!')
+
+    if params.dataset == 'cross':
+        base_file = configs.data_dir['miniImagenet'] + 'all.json' 
+        val_file   = configs.data_dir['CUB'] + 'val.json' 
+    elif params.dataset == 'cross_char':
+        base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
+        val_file   = configs.data_dir['emnist'] + 'val.json' 
+    elif params.dataset == 'flowers_original':
+        base_file = configs.data_dir['flowers'] + 'original_split_train.json'
+        val_file = configs.data_dir['flowers'] + 'original_split_test.json'
+    elif params.dataset == 'dogs_original':
+        base_file = configs.data_dir['dogs'] + 'original_split_train.json'
+        val_file = configs.data_dir['dogs'] + 'original_split_test.json'
+    elif params.dataset == 'aircrafts_original':
+        base_file = configs.data_dir['aircrafts'] + 'original_split_train.json'
+        val_file = configs.data_dir['aircrafts'] + 'original_split_test.json'
+    elif params.dataset == 'cars_original':
+        base_file = configs.data_dir['cars'] + 'original_split_train.json'
+        val_file = configs.data_dir['cars'] + 'original_split_test.json'
+    elif params.dataset == 'CUB_original':
+        if params.firstk > 0:
+            base_file = configs.data_dir['CUB'] + 'original_split_train_first_'+str(params.firstk)+'.json'
+        else:
+            base_file = configs.data_dir['CUB'] + 'original_split_train.json'
+        val_file = configs.data_dir['CUB'] + 'original_split_test.json'
+        print('base_file',base_file)
+        print('val_file',val_file)
+    elif params.dataset == 'CUB_subset':
+        base_file = configs.data_dir['CUB'] + 'original_split_train_base.json'
+        val_file = configs.data_dir['CUB'] + 'original_split_train_val.json'
+    elif '_' in params.dataset:
+        base_file = configs.data_dir[params.dataset.split('_')[0]] + 'base_' + params.dataset.split('_')[1] +'.json'
+        print("base file for labeled dataset is:", base_file)
+        val_file = configs.data_dir[params.dataset.split('_')[0]] + 'val.json'
+    else:
+        if params.json_seed is not None:
+            base_file = configs.data_dir[params.dataset] + 'base' + params.json_seed + '.json' 
+            val_file   = configs.data_dir[params.dataset] + 'val' + params.json_seed + '.json' 
+        else:
+            base_file = configs.data_dir[params.dataset] + 'base.json' 
+            val_file   = configs.data_dir[params.dataset] + 'val.json' 
+         
+    if 'Conv' in params.model:
+        if params.dataset in ['omniglot', 'cross_char']:
+            image_size = 28
+        else:
+            # image_size = 84
+            image_size = 255
+    else:
+        # image_size = 224 #original setting
+        # image_size = 256 #my setting
+        image_size = params.image_size
+
+
+    if params.dataset in ['omniglot', 'cross_char']:
+        assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+        params.model = 'Conv4S'
+
+    if params.method in ['baseline', 'baseline++'] :
+        # base_datamgr    = SimpleDataManager(image_size, batch_size = 16, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
+        base_datamgr    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
+        base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
+        # val_datamgr     = SimpleDataManager(image_size, batch_size = 64, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
+        val_datamgr     = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
+        val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
+        
+        # if params.dataset == 'omniglot':
+        #     assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
+        # if params.dataset == 'cross_char':
+        #     assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
+        if params.dataset == 'CUB_original':
+            params.num_classes = 200
+        elif params.dataset == 'cars_original':
+            params.num_classes = 196
+        elif params.dataset == 'aircrafts_original':
+            params.num_classes = 100
+        elif params.dataset == 'dogs_original':
+            params.num_classes = 120
+        elif params.dataset == 'flowers_original':
+            params.num_classes = 102
+        elif params.dataset == 'miniImagenet':
+            params.num_classes = 100
+        elif params.dataset == 'tieredImagenet':
+            params.num_classes = 608
+
+
+        if params.method == 'baseline':
+            model           = BaselineTrain( model_dict[params.model], params.num_classes, \
+                                            jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, tracking=params.tracking)
+        elif params.method == 'baseline++':
+            model           = BaselineTrain( model_dict[params.model], params.num_classes, \
+                                            loss_type = 'dist', jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, tracking=params.tracking)
+
+    elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
+        n_query = max(1, int(params.n_query * params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
+        print('n_query:',n_query)
+ 
+        # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
+        train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
+        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey)
+        base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
+         
+        test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
+        val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
+        #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
+
+        if params.method == 'protonet':
+            model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain)
+        elif params.method == 'matchingnet':
+            model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
+        elif params.method in ['relationnet', 'relationnet_softmax']:
+            if params.model == 'Conv4': 
+                feature_model = backbone.Conv4NP
+            elif params.model == 'Conv6': 
+                feature_model = backbone.Conv6NP
+            elif params.model == 'Conv4S': 
+                feature_model = backbone.Conv4SNP
+            else:
+                feature_model = lambda: model_dict[params.model]( flatten = False )
+            loss_type = 'mse' if params.method == 'relationnet' else 'softmax'
+
+            model           = RelationNet( feature_model, loss_type = loss_type , **train_few_shot_params )
+        elif params.method in ['maml' , 'maml_approx']:
+            backbone.ConvBlock.maml = True
+            backbone.SimpleBlock.maml = True
+            backbone.BottleneckBlock.maml = True
+            backbone.ResNet.maml = True
+
+            BasicBlock.maml = True
+            Bottleneck.maml = True
+            ResNet.maml = True
+
+            model           = MAML(  model_dict[params.model], approx = (params.method == 'maml_approx') , **train_few_shot_params )
+            if params.dataset in ['omniglot', 'cross_char']: #maml use different parameter in omniglot
+                model.n_task     = 32
+                model.task_update_num = 1
+                model.train_lr = 0.1
+    else:
+       raise ValueError('Unknown method')
+    # import ipdb; ipdb.set_trace()
+    model = model.cuda()
+    model.feature = model.feature.cuda()
+    # import ipdb; ipdb.set_trace()
+
+    if params.json_seed is not None:
+        params.checkpoint_dir = '%s/checkpoints/%s_%s/%s_%s_%s' %(configs.save_dir, params.dataset, params.json_seed, params.date, params.model, params.method)
+    else:
+        params.checkpoint_dir = '%s/checkpoints/%s/%s_%s_%s' %(configs.save_dir, params.dataset, params.date, params.model, params.method)
+    if params.train_aug:
+        params.checkpoint_dir += '_aug'
+    if not params.method  in ['baseline', 'baseline++']: 
+        params.checkpoint_dir += '_%dway_%dshot_%dquery' %( params.train_n_way, params.n_shot, params.n_query)
+
+    params.checkpoint_dir += '_%d'%image_size
+    
+    if params.dataset_unlabel is not None:
+        params.checkpoint_dir += params.dataset_unlabel
+        params.checkpoint_dir += str(params.bs)
+
+    ## Track bn stats
+    if params.tracking:
+        params.checkpoint_dir += '_tracking'
+
+    ## Use subset of training data
+    if params.firstk > 0:
+        params.checkpoint_dir += ('_first'+str(params.firstk))
+
+    ## Use grey image
+    if params.grey:
+        params.checkpoint_dir += '_grey'
+
+    ## Add jigsaw
+    if params.jigsaw:
+        params.checkpoint_dir += '_jigsawonly_alldata_lbda%.2f'%(params.lbda)
+        params.checkpoint_dir += params.optimization
+    ## Add rotation
+    if params.rotation:
+        params.checkpoint_dir += '_rotation_lbda%.2f'%(params.lbda)
+        params.checkpoint_dir += params.optimization
+
+    params.checkpoint_dir += '_lr%.4f'%(params.lr)
+    if params.finetune:
+        params.checkpoint_dir += '_finetune'
+
+    if params.random:
+        params.checkpoint_dir = 'checkpoints/'+params.dataset+'/random'
+    if params.debug:
+        params.checkpoint_dir = 'checkpoints/'+params.dataset+'/debug'
+
+    print('Checkpoint path:',params.checkpoint_dir)
+    if not os.path.isdir(params.checkpoint_dir):
+        os.makedirs(params.checkpoint_dir)
+
+    start_epoch = params.start_epoch
+    stop_epoch = params.stop_epoch
+    if params.method == 'maml' or params.method == 'maml_approx' :
+        stop_epoch = params.stop_epoch * model.n_task #maml use multiple tasks in one update 
+    ## Use Google paper setting
+    if params.method == 'baseline' and 'original' in params.dataset:
+        stop_epoch = int(20000/len(base_loader))
+        print('train 20000 iters which is '+str(stop_epoch)+' epoch')
+
+    if params.resume:
+        resume_file = get_resume_file(params.checkpoint_dir)
+        if resume_file is not None:
+            tmp = torch.load(resume_file)
+            start_epoch = tmp['epoch']+1
+            model.load_state_dict(tmp['state'])
+            del tmp
+    elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
+        baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')
+        if params.train_aug:
+            baseline_checkpoint_dir += '_aug'
+        warmup_resume_file = get_resume_file(baseline_checkpoint_dir)
+        tmp = torch.load(warmup_resume_file)
+        if tmp is not None: 
+            state = tmp['state']
+            state_keys = list(state.keys())
+            for i, key in enumerate(state_keys):
+                if "feature." in key:
+                    newkey = key.replace("feature.","")  # an architecture model has attribute 'feature', load architecture feature to backbone by casting name from 'feature.trunk.xx' to 'trunk.xx'  
+                    state[newkey] = state.pop(key)
+                else:
+                    state.pop(key)
+            model.feature.load_state_dict(state)
+        else:
+            raise ValueError('No warm_up file')
+    
+    if params.loadfile != '':
+        print('Loading model from: ' + params.loadfile)
+        checkpoint = torch.load(params.loadfile)
+        ## remove last layer for baseline
+        pretrained_dict = {k: v for k, v in checkpoint['state'].items() if 'classifier' not in k and 'loss_fn' not in k}
+        # import ipdb; ipdb.set_trace()
+        # print(pretrained_dict)
+        print('Load model from:',params.loadfile)
+        model.load_state_dict(pretrained_dict, strict=False)
+
+    json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))
+    train(base_loader, val_loader,  model, start_epoch, stop_epoch, params)
+
+
+    ##### save_features (except maml) and test, added by me #####
+    split = 'novel'
+    if params.save_iter != -1:
+        split_str = split + "_" +str(params.save_iter)
+    else:
+        split_str = split
+
+    iter_num = 600
+    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
+    acc_all = []
+
+    if params.loadfile != '':
+        modelfile   = params.loadfile
+        checkpoint_dir = params.loadfile
+    else:
+        checkpoint_dir = params.checkpoint_dir
+        if params.save_iter != -1:
+            modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
+        elif params.method in ['baseline', 'baseline++'] :
+            modelfile   = get_resume_file(checkpoint_dir)
+        else:
+            modelfile   = get_best_file(checkpoint_dir)
+
+    # if not params.method in ['baseline', 'baseline++'] :
+    if params.method in ['maml', 'maml_approx']:
+        if modelfile is not None:
+            tmp = torch.load(modelfile)
+            state = tmp['state']
+            state_keys = list(state.keys())
+            for i, key in enumerate(state_keys):
+                if "feature." in key:
+                    newkey = key.replace("feature.","")  # an architecture model has attribute 'feature', load architecture feature to backbone by casting name from 'feature.trunk.xx' to 'trunk.xx'
+                    state[newkey] = state.pop(key)
+                else:
+                    state.pop(key)
+            # model.load_state_dict(tmp['state'], strict=False)
+            model.feature.load_state_dict(tmp['state'])
+        print('modelfile:',modelfile)
+
+        datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey)
+        loadfile = configs.data_dir[params.dataset] + split + '.json'
+        novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
+        if params.adaptation:
+            model.task_update_num = 100 #We perform adaptation on MAML simply by updating more times.
+        model.eval()
+        acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
+    else:
+        
+        if params.method == 'baseline':
+            model           = BaselineFinetune( model_dict[params.model], **few_shot_params )
+        elif params.method == 'baseline++':
+            model           = BaselineFinetune( model_dict[params.model], loss_type = 'dist', **few_shot_params )
+
+        if params.save_iter != -1:
+            outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5")
+        else:
+            outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
+
+        datamgr         = SimpleDataManager(image_size, batch_size = params.test_bs, isAircraft=isAircraft, grey=params.grey)
+        if '_' in params.dataset:
+            loadfile = configs.data_dir[params.dataset.split('_')[0]] + split + '.json'
+        else:
+            loadfile = configs.data_dir[params.dataset] + split + '.json'
+        data_loader      = datamgr.get_data_loader(loadfile, aug = False)
+
+        tmp = torch.load(modelfile)
+        state = tmp['state']
+        state_keys = list(state.keys())
+        for i, key in enumerate(state_keys):
+            if "feature." in key:
+                newkey = key.replace("feature.","")  # an architecture model has attribute 'feature', load architecture feature to backbone by casting name from 'feature.trunk.xx' to 'trunk.xx'
+                state[newkey] = state.pop(key)
+            else:
+                state.pop(key)
+
+
+        # import ipdb; ipdb.set_trace()
+        # if params.method != 'baseline':
+        model.feature.load_state_dict(state)
+        model.feature.eval()
+        model = model.cuda()
+        model.feature = model.feature.cuda()
+        # else:
+        #     model.load_state_dict(state)
+        model.eval()
+
+        dirname = os.path.dirname(outfile)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+        # import ipdb; ipdb.set_trace()
+        # outfile += '_finetune'
+        print('save outfile at:', outfile)
+        from save_features import save_features
+        save_features(model, data_loader, outfile)
+
+        ### from test.py ###
+        from test import feature_evaluation
+        novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
+        print('load novel file from:',novel_file)
+        import data.feature_loader as feat_loader
+        cl_data_file = feat_loader.init_loader(novel_file)
+
+        for i in range(iter_num):
+            acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
+            acc_all.append(acc)
+
+        acc_all  = np.asarray(acc_all)
+        acc_mean = np.mean(acc_all)
+        acc_std  = np.std(acc_all)
+        print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+        
+        with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
+            timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+            aug_str = '-aug' if params.train_aug else ''
+            aug_str += '-adapted' if params.adaptation else ''
+            if params.method in ['baseline', 'baseline++'] :
+                exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
+            else:
+                exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
+            acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+            f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
+
+
