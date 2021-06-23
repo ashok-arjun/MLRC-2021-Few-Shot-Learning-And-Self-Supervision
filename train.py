@@ -120,23 +120,23 @@ if __name__=='__main__':
         base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
         val_file   = configs.data_dir['emnist'] + 'val.json' 
     elif params.dataset == 'flowers_original':
-        base_file = configs.data_dir['flowers'] + 'original_split_train.json'
-        val_file = configs.data_dir['flowers'] + 'original_split_test.json'
+        base_file = configs.data_dir['flowers'] + 'base.json'
+        val_file = configs.data_dir['flowers'] + 'val.json'
     elif params.dataset == 'dogs_original':
-        base_file = configs.data_dir['dogs'] + 'original_split_train.json'
-        val_file = configs.data_dir['dogs'] + 'original_split_test.json'
+        base_file = configs.data_dir['dogs'] + 'base.json'
+        val_file = configs.data_dir['dogs'] + 'val.json'
     elif params.dataset == 'aircrafts_original':
-        base_file = configs.data_dir['aircrafts'] + 'original_split_train.json'
-        val_file = configs.data_dir['aircrafts'] + 'original_split_test.json'
+        base_file = configs.data_dir['aircrafts'] + 'base.json'
+        val_file = configs.data_dir['aircrafts'] + 'val.json'
     elif params.dataset == 'cars_original':
-        base_file = configs.data_dir['cars'] + 'original_split_train.json'
-        val_file = configs.data_dir['cars'] + 'original_split_test.json'
+        base_file = configs.data_dir['cars'] + 'base.json'
+        val_file = configs.data_dir['cars'] + 'val.json'
     elif params.dataset == 'CUB_original':
         if params.firstk > 0:
             base_file = configs.data_dir['CUB'] + 'original_split_train_first_'+str(params.firstk)+'.json'
         else:
-            base_file = configs.data_dir['CUB'] + 'original_split_train.json'
-        val_file = configs.data_dir['CUB'] + 'original_split_test.json'
+            base_file = configs.data_dir['CUB'] + 'base.json'
+        val_file = configs.data_dir['CUB'] + 'val.json'
         print('base_file',base_file)
         print('val_file',val_file)
     elif params.dataset == 'CUB_subset':
