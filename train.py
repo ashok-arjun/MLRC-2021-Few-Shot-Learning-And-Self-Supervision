@@ -1,12 +1,21 @@
 import numpy as np
+import time
+import os
+import glob
+import random
+
+from io_utils import set_seed
+
+params = parse_args('train')
+os.environ["CUDA_VISIBLE_DEVICES"] = params.device
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim
 import torch.optim.lr_scheduler as lr_scheduler
-import time
-import os
-import glob
+
+# set_seed(params.seed)
 
 import configs
 import backbone
@@ -21,7 +30,18 @@ from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get
 from tensorboardX import SummaryWriter
 import json
 from model_resnet import *
-from copy_local import *
+from utils import RunningAverage
+
+import wandb
+
+try:
+    from apex.parallel import DistributedDataParallel as DDP
+    from apex.fp16_utils import *
+    from apex import amp, optimizers
+    from apex.multi_tensor_apply import multi_tensor_applier
+except ImportError:
+    raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run the code.")
+    
 
 def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):    
     if params.optimization == 'Adam':
@@ -33,54 +53,65 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
     else:
        raise ValueError('Unknown optimization, please define by yourself')
 
+    if params.amp:
+        print("-----------Using mixed precision-----------") 
+        model, optimizer = amp.initialize(model, optimizer)
+
+    eval_interval = params.eval_interval
     max_acc = 0       
-    writer = SummaryWriter(log_dir=params.checkpoint_dir)
+        
+    pbar = tqdm(range(0, stop_epoch*len(base_loader)), total = stop_epoch*len(base_loader))
+    
+    pbar.update(start_epoch*len(base_loader))
+    pbar.refresh()
+    
+    
     for epoch in range(start_epoch,stop_epoch):
+        start_time = time.time()
+        
         model.train()
-        model.train_loop(epoch, base_loader, optimizer, writer) #model are called by reference, no need to return 
-        model.eval()
+        model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp) #model are called by reference, no need to return 
+        
+        end_time = time.time()
+        
+        wandb.log({"Epoch": epoch}, step=model.global_count)
+        wandb.log({"Epoch Time": end_time-start_time}, step=model.global_count)        
+        
+        if epoch % eval_interval == True or epoch == stop_epoch - 1: 
+            model.eval()
+            if not os.path.isdir(params.checkpoint_dir):
+                os.makedirs(params.checkpoint_dir)
 
-        if not os.path.isdir(params.checkpoint_dir):
-            os.makedirs(params.checkpoint_dir)
+            if params.jigsaw:
+                acc, acc_jigsaw = model.test_loop( val_loader)
 
-        if params.jigsaw:
-            acc, acc_jigsaw = model.test_loop( val_loader)
-            writer.add_scalar('val/acc', acc, epoch)
-            writer.add_scalar('val/acc_jigsaw', acc_jigsaw, epoch)
-        elif params.rotation:
-            acc, acc_rotation = model.test_loop( val_loader)
-            writer.add_scalar('val/acc', acc, epoch)
-            writer.add_scalar('val/acc_rotation', acc_rotation, epoch)
-        else:    
-            acc = model.test_loop( val_loader)
-            writer.add_scalar('val/acc', acc, epoch)
-        if acc > max_acc : #for baseline and baseline++, we don't use validation here so we let acc = -1
-            print("best model! save...")
-            max_acc = acc
-            outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
-            torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
+                writer.add_scalar('val/acc', acc, epoch)
+                writer.add_scalar('val/acc_jigsaw', acc_jigsaw, epoch)
+            elif params.rotation:
+                acc, acc_rotation = model.test_loop( val_loader)
+                writer.add_scalar('val/acc', acc, epoch)
+                writer.add_scalar('val/acc_rotation', acc_rotation, epoch)
+            else:    
+                acc = model.test_loop( val_loader)
+                writer.add_scalar('val/acc', acc, epoch)
+            if acc > max_acc : 
+                max_acc = acc
+                outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
+                torch.save({'epoch':epoch, 'state':model.state_dict(), 'optimizer': optimizer.state_dict()}, outfile)
+                wandb.save(outfile)
 
         if ((epoch+1) % params.save_freq==0) or (epoch==stop_epoch-1):
-            outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
-            torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
-
-    # return model
-
+            outfile = os.path.join(params.checkpoint_dir, 'last_model.tar')
+            torch.save({'epoch':epoch, 'state':model.state_dict(), 'optimizer': optimizer.state_dict()}, outfile)
+            wandb.save(outfile)
+            
 if __name__=='__main__':
-    np.random.seed(10)
-    params = parse_args('train')
+    np.random.seed(10)    
+    
+    torch.cuda.set_device(params.device)
+    
 
     isAircraft = (params.dataset == 'aircrafts')
-    ## copy dataset to local for gypsum
-    # if params.gypsum and (params.dataset in ['CUB','cars','aircrafts','flowers','dogs']):
-    if params.gypsum and ('Imagenet' not in params.dataset):
-        print('Copying dataset to local...')
-        if '_' in params.dataset:
-            dset = params.dataset.split('_')[0]
-        else:
-            dset = params.dataset
-        setup_dataset(dset)
-        print('Finished copying dataset!')
 
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 

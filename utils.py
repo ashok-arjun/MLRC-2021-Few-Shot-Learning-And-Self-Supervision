@@ -29,3 +29,15 @@ def sparsity(cl_data_file):
         cl_sparsity.append(np.mean([np.sum(x!=0) for x in cl_data_file[cl] ])  ) 
 
     return np.mean(cl_sparsity) 
+
+class RunningAverage():
+    def __init__(self):
+    self.count = 0
+    self.sum = 0
+
+    def update(self, value, n_items = 1):
+    self.sum += value * n_items
+    self.count += n_items
+
+    def __call__(self):
+    return self.sum/self.count   

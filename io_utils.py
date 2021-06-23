@@ -76,6 +76,11 @@ def parse_args(script):
     parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
     parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
 
+    parser.add_argument('--device', type=str, default="0", help='GPU') #never used in the paper
+    parser.add_argument('--seed', type=int, default=10)
+    parser.add_argument('--amp', action='store_true', help='amp') #never used in the paper
+
+    
     ## For depth exp.
     parser.add_argument('--rgbd'        , action='store_true',  help='use rgbd')
     parser.add_argument('--d_only'        , action='store_true',  help='use d only')# TODO
@@ -88,6 +93,12 @@ def parse_args(script):
         parser.add_argument('--stop_epoch'  , default=400, type=int, help ='Stopping epoch') # for meta-learning methods, each epoch contains 100 episodes
         parser.add_argument('--resume'      , action='store_true', help='continue from previous trained model with largest epoch')
         parser.add_argument('--warmup'      , action='store_true', help='continue from baseline, neglected if resume is true') #never used in the paper
+    
+        parser.add_argument('--eval_interval', type=int, default=50, help='eval_interval') 
+        parser.add_argument('--run_name', default=None, help="wandb run name")
+
+    
+    
     # elif script == 'save_features':
     #     parser.add_argument('--test_bs'          , default=64, type=int,  help='batch size for testing w/o batchnorm')
     #     parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
@@ -124,3 +135,49 @@ def get_best_file(checkpoint_dir):
         return best_file
     else:
         return get_resume_file(checkpoint_dir)
+
+class data_prefetcher():
+    def __init__(self, loader):
+        self.loader = iter(loader)
+        self.stream = torch.cuda.Stream()
+        self.preload()
+
+    def preload(self):
+        try:
+            self.inputs = list(next(self.loader))
+        except StopIteration:
+            self.inputs = None
+            return
+        with torch.cuda.stream(self.stream):
+            for i,tensor in enumerate(self.inputs):
+                self.inputs[i] = self.inputs[i].cuda(non_blocking=True)
+
+    def next(self):
+        torch.cuda.current_stream().wait_stream(self.stream)
+        input = self.inputs[0]
+        target = self.inputs[1]
+        aux_input = self.inputs[2] if len(self.inputs) == 4 else None
+        aux_label = self.inputs[3] if len(self.inputs) == 4 else None
+
+        if input is not None:
+            input.record_stream(torch.cuda.current_stream())
+        if target is not None:
+            target.record_stream(torch.cuda.current_stream())
+        if aux_input is not None:
+            aux_input.record_stream(torch.cuda.current_stream())
+        if aux_label is not None:
+            aux_label.record_stream(torch.cuda.current_stream())
+            
+        self.preload()
+        return input, target, aux_input, aux_label
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    os.environ["PYTHONHASHSEED"] = str(seed)  
