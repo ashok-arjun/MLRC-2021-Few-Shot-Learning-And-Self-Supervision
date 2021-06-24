@@ -59,7 +59,6 @@ def parse_args(script):
 
     parser.add_argument('--rotation'    , action='store_true',  help='multi-task training')
     parser.add_argument('--grey'        , action='store_true',  help='use grey image')
-    parser.add_argument('--tracking'    , type=str2bool, nargs='?', default=True, const=True,   help='tracking batchnorm stats')
     parser.add_argument('--firstk'      , default=0, type=int, help='first k images per class for training CUB')
 
     parser.add_argument('--testiter'       , default=199, type=int,  help='date of the exp')
@@ -76,10 +75,11 @@ def parse_args(script):
     parser.add_argument('--lbda_jigsaw'        , default=0.0, type=float,  help='lambda for the jigsaw loss, (1-lambda) for proto loss')
     parser.add_argument('--lbda_rotation'        , default=0.0, type=float,  help='lambda for the jigsaw loss, (1-lambda) for proto loss')
 
-    parser.add_argument('--no_bn'       , type=str2bool, nargs='?', default=False, const=True,   help='not using batch norm if True')
     parser.add_argument('--pretrain'    , type=str2bool, nargs='?', default=False, const=True,   help='use imagenet pre-train model')
 
     parser.add_argument('--dataset_unlabel'     , default=None,        help='CUB/miniImagenet/cross/omniglot/cross_char')
+
+    parser.add_argument('--bn_type', default=1, help="1 for BN+Tracking. 2 for BN + no tracking, 3 for no BN. BN --> BatchNorm")
 
     parser.add_argument('--test_bs'          , default=64, type=int,  help='batch size for testing w/o batchnorm')
     parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 

@@ -115,6 +115,16 @@ if __name__=='__main__':
 
     isAircraft = (params.dataset == 'aircrafts')
 
+    if params.bn_type == 1:
+        params.no_bn = False
+        params.tracking = True
+    elif params.bn_type == 2:
+        params.no_bn = False
+        params.tracking = False
+    elif params.bn_type == 3:
+        params.no_bn = True
+        params.tracking = False
+
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
@@ -262,6 +272,11 @@ if __name__=='__main__':
     if params.dataset_unlabel is not None:
         params.checkpoint_dir += params.dataset_unlabel
         params.checkpoint_dir += str(params.bs)
+
+    ## Check
+
+    if params.tracking == True and params.no_bn == True:
+        params.tracking = False
 
     ## Track bn stats
     if params.tracking:
