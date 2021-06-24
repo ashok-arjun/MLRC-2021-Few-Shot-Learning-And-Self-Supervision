@@ -18,9 +18,9 @@ class MetaTemplate(nn.Module):
         self.dual_cbam = False
         self.tracking = tracking
         self.use_bn = use_bn
-        print("USE BN:",use_bn)
-        print("USE pre-trained model:",pretrain)
-        print("USE tracking:",tracking)
+        print("Using BN:",use_bn)
+        print("Using pre-trained model:",pretrain)
+        print("Using tracking:",tracking)
         if isinstance(model_func,str):
             if model_func == 'resnet18':
                 self.feature = ResidualNet('ImageNet', 18, 1000, None, tracking=tracking, use_bn=self.use_bn)

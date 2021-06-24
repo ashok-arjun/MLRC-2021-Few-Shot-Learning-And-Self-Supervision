@@ -73,7 +73,6 @@ class BasicBlock(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, downsample_jigsaw=None, track_running_stats=True, use_bn=True):
         super(BasicBlock, self).__init__()
-        print('tracking in block:',track_running_stats)
         # print('use bn in block:',use_bn)
         self.use_bn = use_bn
 
@@ -127,7 +126,6 @@ class Bottleneck(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, track_running_stats=True, use_bn=True):
         super(Bottleneck, self).__init__()
-        print('tracking in block:',track_running_stats)
         # print('use bn in block:',use_bn)
         self.use_bn = use_bn
 
@@ -225,7 +223,6 @@ class ResNet(nn.Module):
             else:
                 self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
 
-        print('tracking:',self.track_running_stats)
         if self.use_bn:
             if self.maml:
                 self.bn1 = BatchNorm2d_fw(64)
@@ -263,7 +260,6 @@ class ResNet(nn.Module):
         downsample = None
         downsample_jigsaw = None
         if stride != 1 or self.inplanes != planes * block.expansion:
-            print('tracking:',self.track_running_stats)
             # print('use bn:',use_bn)
             if use_bn:
                 if self.maml:

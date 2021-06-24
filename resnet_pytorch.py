@@ -123,7 +123,6 @@ class ResNet(nn.Module):
                  norm_layer=None, tracking=True):
         super(ResNet, self).__init__()
         self.track_running_stats = tracking## added this
-        print('tracking:',self.track_running_stats)
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d

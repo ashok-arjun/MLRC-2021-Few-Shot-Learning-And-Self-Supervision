@@ -111,7 +111,7 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
 if __name__=='__main__':
     np.random.seed(10)    
     
-    torch.cuda.set_device(params.device)    
+    torch.cuda.set_device(int(params.device[0])) # Remove this when using DDP    
 
     isAircraft = (params.dataset == 'aircrafts')
 
@@ -124,6 +124,9 @@ if __name__=='__main__':
     elif params.bn_type == 3:
         params.no_bn = True
         params.tracking = False
+
+    print(params.no_bn)
+    print(params.tracking)
 
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
@@ -235,7 +238,7 @@ if __name__=='__main__':
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 
         if params.method == 'protonet':
-            model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain)
+            model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain, tracking=params.tracking)
         elif params.method in ['maml' , 'maml_approx']:
             backbone.ConvBlock.maml = True
             backbone.SimpleBlock.maml = True
@@ -246,7 +249,7 @@ if __name__=='__main__':
             Bottleneck.maml = True
             ResNet.maml = True
 
-            model           = MAML(  model_dict[params.model], approx = (params.method == 'maml_approx') , **train_few_shot_params )
+            model           = MAML(  model_dict[params.model], approx = (params.method == 'maml_approx') , tracking=params.tracking, **train_few_shot_params )
             if params.dataset in ['omniglot', 'cross_char']: #maml use different parameter in omniglot
                 model.n_task     = 32
                 model.task_update_num = 1
@@ -272,11 +275,6 @@ if __name__=='__main__':
     if params.dataset_unlabel is not None:
         params.checkpoint_dir += params.dataset_unlabel
         params.checkpoint_dir += str(params.bs)
-
-    ## Check
-
-    if params.tracking == True and params.no_bn == True:
-        params.tracking = False
 
     ## Track bn stats
     if params.tracking:
