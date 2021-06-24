@@ -129,17 +129,7 @@ class ProtoNet(MetaTemplate):
                     avg_loss_rotation += loss_rotation.data
                     wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
                     wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
-
-                if (i+1) % print_freq==0:
-                    #print(optimizer.state_dict()['param_groups'][0]['lr'])
-                    if self.jigsaw:
-                        print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f} | Loss Proto {:f} | Loss Jigsaw {:f}'.\
-                            format(epoch, i+1, len(train_loader), avg_loss/float(i+1), avg_loss_proto/float(i+1), avg_loss_jigsaw/float(i+1)))
-                    elif self.rotation:
-                        print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f} | Loss Proto {:f} | Loss Rotation {:f}'.\
-                            format(epoch, i+1, len(train_loader), avg_loss/float(i+1), avg_loss_proto/float(i+1), avg_loss_rotation/float(i+1)))
-                    else:
-                        print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i+1, len(train_loader), avg_loss/float(i+1)))
+                    
         else:
             for i, inputs in enumerate(train_loader):
                 self.global_count += 1

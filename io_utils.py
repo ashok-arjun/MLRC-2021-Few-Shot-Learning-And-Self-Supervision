@@ -19,6 +19,16 @@ model_dict = dict(
             resnet50_pytorch = 'resnet50_pytorch'
             ) 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def parse_args(script):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
     parser.add_argument('--dataset'     , default='CUB',        help='CUB/miniImagenet/cross/omniglot/cross_char')
@@ -27,7 +37,7 @@ def parse_args(script):
     parser.add_argument('--train_n_way' , default=5, type=int,  help='class num to classify for training') #baseline and baseline++ would ignore this parameter
     parser.add_argument('--test_n_way'  , default=5, type=int,  help='class num to classify for testing (validation) ') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--n_shot'      , default=5, type=int,  help='number of labeled data in each class, same as n_support') #baseline and baseline++ only use this parameter in finetuning
-    parser.add_argument('--train_aug'   , action='store_true',  help='perform data augmentation or not during training ') #still required for save_features.py and test.py to find the model path correctly
+    parser.add_argument('--train_aug'   , type=str2bool, nargs='?', default=True, const=True,   help='perform data augmentation or not during training ') #still required for save_features.py and test.py to find the model path correctly
 
     parser.add_argument('--jigsaw'      , action='store_true',  help='multi-task training')
     parser.add_argument('--lbda'        , default=0.0, type=float,  help='lambda for the jigsaw loss, (1-lambda) for proto loss')
@@ -49,7 +59,7 @@ def parse_args(script):
 
     parser.add_argument('--rotation'    , action='store_true',  help='multi-task training')
     parser.add_argument('--grey'        , action='store_true',  help='use grey image')
-    parser.add_argument('--tracking'    , action='store_true',  help='tracking batchnorm stats')
+    parser.add_argument('--tracking'    , type=str2bool, nargs='?', default=True, const=True,   help='tracking batchnorm stats')
     parser.add_argument('--firstk'      , default=0, type=int, help='first k images per class for training CUB')
 
     parser.add_argument('--testiter'       , default=199, type=int,  help='date of the exp')
@@ -66,8 +76,8 @@ def parse_args(script):
     parser.add_argument('--lbda_jigsaw'        , default=0.0, type=float,  help='lambda for the jigsaw loss, (1-lambda) for proto loss')
     parser.add_argument('--lbda_rotation'        , default=0.0, type=float,  help='lambda for the jigsaw loss, (1-lambda) for proto loss')
 
-    parser.add_argument('--no_bn'        , action='store_true',  help='not using batch norm if True')
-    parser.add_argument('--pretrain'        , action='store_true',  help='use imagenet pre-train model')
+    parser.add_argument('--no_bn'       , type=str2bool, nargs='?', default=False, const=True,   help='not using batch norm if True')
+    parser.add_argument('--pretrain'    , type=str2bool, nargs='?', default=False, const=True,   help='use imagenet pre-train model')
 
     parser.add_argument('--dataset_unlabel'     , default=None,        help='CUB/miniImagenet/cross/omniglot/cross_char')
 
@@ -181,3 +191,8 @@ def set_seed(seed):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
     os.environ["PYTHONHASHSEED"] = str(seed)  
+
+
+if __name__ == "__main__":
+    args = parse_args('train')
+    print(args)

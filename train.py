@@ -27,10 +27,10 @@ from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
 from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file
-from tensorboardX import SummaryWriter
 import json
 from model_resnet import *
 from utils import RunningAverage
+from tqdm import tqdm
 
 import wandb
 
@@ -85,31 +85,33 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
             if params.jigsaw:
                 acc, acc_jigsaw = model.test_loop( val_loader)
 
-                writer.add_scalar('val/acc', acc, epoch)
-                writer.add_scalar('val/acc_jigsaw', acc_jigsaw, epoch)
+                wandb.log({'val/acc': acc}, step=model.global_count)
+                wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
+
             elif params.rotation:
                 acc, acc_rotation = model.test_loop( val_loader)
-                writer.add_scalar('val/acc', acc, epoch)
-                writer.add_scalar('val/acc_rotation', acc_rotation, epoch)
+                wandb.log({'val/acc': acc}, step=model.global_count)
+                wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
             else:    
                 acc = model.test_loop( val_loader)
-                writer.add_scalar('val/acc', acc, epoch)
+                wandb.log({'val/acc': acc}, step=model.global_count)
             if acc > max_acc : 
                 max_acc = acc
                 outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
                 torch.save({'epoch':epoch, 'state':model.state_dict(), 'optimizer': optimizer.state_dict()}, outfile)
                 wandb.save(outfile)
 
-        if ((epoch+1) % params.save_freq==0) or (epoch==stop_epoch-1):
+        if ((epoch) % params.save_freq==0) or (epoch==stop_epoch-1):
             outfile = os.path.join(params.checkpoint_dir, 'last_model.tar')
             torch.save({'epoch':epoch, 'state':model.state_dict(), 'optimizer': optimizer.state_dict()}, outfile)
             wandb.save(outfile)
+
+    pbar.close()
             
 if __name__=='__main__':
     np.random.seed(10)    
     
-    torch.cuda.set_device(params.device)
-    
+    torch.cuda.set_device(params.device)    
 
     isAircraft = (params.dataset == 'aircrafts')
 
@@ -137,8 +139,6 @@ if __name__=='__main__':
         else:
             base_file = configs.data_dir['CUB'] + 'base.json'
         val_file = configs.data_dir['CUB'] + 'val.json'
-        print('base_file',base_file)
-        print('val_file',val_file)
     elif params.dataset == 'CUB_subset':
         base_file = configs.data_dir['CUB'] + 'original_split_train_base.json'
         val_file = configs.data_dir['CUB'] + 'original_split_train_val.json'
@@ -153,7 +153,10 @@ if __name__=='__main__':
         else:
             base_file = configs.data_dir[params.dataset] + 'base.json' 
             val_file   = configs.data_dir[params.dataset] + 'val.json' 
-         
+
+    print('base_file',base_file)
+    print('val_file',val_file) 
+
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
             image_size = 28
@@ -216,27 +219,13 @@ if __name__=='__main__':
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
-                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, n_eposide=600) 
         val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 
         if params.method == 'protonet':
             model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain)
-        elif params.method == 'matchingnet':
-            model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
-        elif params.method in ['relationnet', 'relationnet_softmax']:
-            if params.model == 'Conv4': 
-                feature_model = backbone.Conv4NP
-            elif params.model == 'Conv6': 
-                feature_model = backbone.Conv6NP
-            elif params.model == 'Conv4S': 
-                feature_model = backbone.Conv4SNP
-            else:
-                feature_model = lambda: model_dict[params.model]( flatten = False )
-            loss_type = 'mse' if params.method == 'relationnet' else 'softmax'
-
-            model           = RelationNet( feature_model, loss_type = loss_type , **train_few_shot_params )
         elif params.method in ['maml' , 'maml_approx']:
             backbone.ConvBlock.maml = True
             backbone.SimpleBlock.maml = True
@@ -323,6 +312,7 @@ if __name__=='__main__':
             tmp = torch.load(resume_file)
             start_epoch = tmp['epoch']+1
             model.load_state_dict(tmp['state'])
+            optimizer.load_state_dict(tmp['optimizer'])
             del tmp
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
         baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')
@@ -354,6 +344,14 @@ if __name__=='__main__':
         model.load_state_dict(pretrained_dict, strict=False)
 
     json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))
+    
+    wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners")
+    
+    wandb.run.name = wandb.run.id if not params.run_name else params.run_name
+    # wandb.run.save()
+    
+    wandb.watch(model)    
+    
     train(base_loader, val_loader,  model, start_epoch, stop_epoch, params)
 
 
@@ -403,6 +401,7 @@ if __name__=='__main__':
             model.task_update_num = 100 #We perform adaptation on MAML simply by updating more times.
         model.eval()
         acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
+        print(acc_mean, acc_std)
     else:
         
         if params.method == 'baseline':
@@ -479,4 +478,4 @@ if __name__=='__main__':
             acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
             f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
-
+        

@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 import os
 identity = lambda x:x
 import math
+import random
 
 def get_patches(img, transform_jigsaw, transform_patch_jigsaw, permutations):
     if np.random.rand() < 0.30:
@@ -87,7 +88,6 @@ class SimpleDataset:
         # import ipdb; ipdb.set_trace()
         # image_path = os.path.join(self.meta['image_names'][i].replace('images','images_lowres'))
         image_path = os.path.join(self.meta['image_names'][i])
-        image_path = image_path.replace('/scratch1/jcsu/dataset/','/mnt/nfs/work1/smaji/tsungyulin/dataset/')
         # image_path = os.path.join(self.meta['image_names'][i].replace('filelists/cars/images/','/data/jcsu/distill-net/data/cars/images_56_224/car_ims/'))
         # print(self.meta['image_names'][i])
         # import ipdb; ipdb.set_trace()
@@ -196,7 +196,6 @@ class SubDataset:
 
     def __getitem__(self,i):
         image_path = os.path.join(self.sub_meta[i])
-        image_path = image_path.replace('/scratch1/jcsu/dataset/','/mnt/nfs/work1/smaji/tsungyulin/dataset/')
         # image_path = os.path.join(self.sub_meta[i].replace('images','images_lowres'))
         # print(image_path)
         # image_path = os.path.join(self.sub_meta[i].replace('filelists/cars/images/','/data/jcsu/distill-net/data/cars/images_56_224/car_ims/'))

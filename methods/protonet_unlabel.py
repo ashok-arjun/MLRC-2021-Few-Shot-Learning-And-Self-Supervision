@@ -100,8 +100,8 @@ class ProtoNet(MetaTemplate):
             if enable_amp:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
-                else:   
-                    loss.backward()
+            else:   
+                loss.backward()
                     
             optimizer.step()
             # avg_loss = avg_loss+loss.data[0]
@@ -250,7 +250,7 @@ class ProtoNet(MetaTemplate):
             y_ = patches_label.view(-1).cuda()
             return x_, y_
         else:
-            print('Hmm')
+            print('Invalid')
             # return scores
 
 
