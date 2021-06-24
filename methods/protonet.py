@@ -70,7 +70,10 @@ class ProtoNet(MetaTemplate):
         avg_loss_proto=0
         avg_loss_jigsaw=0
         avg_loss_rotation=0
-        # for i, (x,_ ) in enumerate(train_loader):
+
+        iter_num = 0 
+        max_iter = len(train_loader)
+
         if base_loader_u is not None:
             # import ipdb; ipdb.set_trace()
             # temp = 0
@@ -88,7 +91,13 @@ class ProtoNet(MetaTemplate):
             # print(temp)
             # exit(0)
 
-            for i,inputs in enumerate(zip(train_loader,cycle(base_loader_u))):
+            while iter_num < max_iter:
+                iter_num += 1
+                try:
+                    inputs = iter_loader.next()
+                except:
+                    iter_loader = data_prefetcher(train_loader)
+                    inputs = iter_loader.next()
                 self.global_count += 1
                 x = inputs[0][0]
                 # import ipdb; ipdb.set_trace()
@@ -131,7 +140,14 @@ class ProtoNet(MetaTemplate):
                     wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
                     
         else:
-            for i, inputs in enumerate(train_loader):
+
+            while iter_num < max_iter:
+                iter_num += 1
+                try:
+                    inputs = iter_loader.next()
+                except:
+                    iter_loader = data_prefetcher(train_loader)
+                    inputs = iter_loader.next()
                 self.global_count += 1
                 x = inputs[0]
                 self.n_query = x.size(1) - self.n_support           
@@ -184,7 +200,16 @@ class ProtoNet(MetaTemplate):
         acc_all_rotation = []
         
         iter_num = len(test_loader) 
-        for i, inputs in enumerate(test_loader):
+        
+        i = 0
+
+        while i < iter_num:
+            i += 1 
+            try:
+                inputs = iter_loader.next()
+            except:
+                iter_loader = data_prefetcher(test_loader)
+                inputs = iter_loader.next()
             x = inputs[0]
             self.n_query = x.size(1) - self.n_support
             if self.change_way:

@@ -77,6 +77,8 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
         wandb.log({"Epoch": epoch}, step=model.global_count)
         wandb.log({"Epoch Time": end_time-start_time}, step=model.global_count)        
         
+        pbar.write(u'\u2713' + ' Epoch: %d; Time taken: %d sec.' % (epoch, end_time-start_time))
+
         if epoch % eval_interval == True or epoch == stop_epoch - 1: 
             model.eval()
             if not os.path.isdir(params.checkpoint_dir):
@@ -229,7 +231,7 @@ if __name__=='__main__':
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
-                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, n_eposide=600) 
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
         val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
