@@ -167,9 +167,6 @@ if __name__=='__main__':
             base_file = configs.data_dir[params.dataset] + 'base.json' 
             val_file   = configs.data_dir[params.dataset] + 'val.json' 
 
-    print('base_file',base_file)
-    print('val_file',val_file) 
-
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
             image_size = 28
