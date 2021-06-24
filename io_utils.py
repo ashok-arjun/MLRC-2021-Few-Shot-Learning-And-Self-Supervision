@@ -48,7 +48,6 @@ def parse_args(script):
     parser.add_argument('--finetune'    , action='store_true',  help='finetuning from jigsaw to protonet')
 
     parser.add_argument('--random'      , action='store_true',  help='random init net')
-    parser.add_argument('--gypsum'      , action='store_true',  help='training on gypsum')
 
     parser.add_argument('--n_query'     , default=16, type=int,  help='number of query, 16 is used in the paper')
     parser.add_argument('--image_size'  , default=224, type=int,  help='224 is used in the paper')
@@ -89,12 +88,6 @@ def parse_args(script):
     parser.add_argument('--device', type=str, default="0", help='GPU') #never used in the paper
     parser.add_argument('--seed', type=int, default=10)
     parser.add_argument('--amp', action='store_true', help='amp') #never used in the paper
-
-    
-    ## For depth exp.
-    parser.add_argument('--rgbd'        , action='store_true',  help='use rgbd')
-    parser.add_argument('--d_only'        , action='store_true',  help='use d only')# TODO
-    parser.add_argument('--normalize'        , action='store_true',  help='normalize feature')
 
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class

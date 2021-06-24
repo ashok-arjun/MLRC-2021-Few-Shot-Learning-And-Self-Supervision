@@ -4,7 +4,7 @@ import os
 import glob
 import random
 
-from io_utils import set_seed
+from io_utils import set_seed, parse_args
 
 params = parse_args('train')
 os.environ["CUDA_VISIBLE_DEVICES"] = params.device
@@ -20,13 +20,13 @@ import torch.optim.lr_scheduler as lr_scheduler
 import configs
 import backbone
 from data.datamgr import SimpleDataManager, SetDataManager
-from methods.baselinetrain import BaselineTrain
-from methods.baselinefinetune import BaselineFinetune
+# from methods.baselinetrain import BaselineTrain
+# from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet
-from methods.matchingnet import MatchingNet
-from methods.relationnet import RelationNet
+# from methods.matchingnet import MatchingNet
+# from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file
+from io_utils import model_dict, get_resume_file, get_best_file, get_assigned_file
 import json
 from model_resnet import *
 from utils import RunningAverage
@@ -34,13 +34,13 @@ from tqdm import tqdm
 
 import wandb
 
-try:
-    from apex.parallel import DistributedDataParallel as DDP
-    from apex.fp16_utils import *
-    from apex import amp, optimizers
-    from apex.multi_tensor_apply import multi_tensor_applier
-except ImportError:
-    raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run the code.")
+# try:
+#     from apex.parallel import DistributedDataParallel as DDP
+#     from apex.fp16_utils import *
+#     from apex import amp, optimizers
+#     from apex.multi_tensor_apply import multi_tensor_applier
+# except ImportError:
+#     raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run the code.")
     
 
 def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):    

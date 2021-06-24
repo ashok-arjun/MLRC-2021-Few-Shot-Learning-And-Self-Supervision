@@ -86,12 +86,6 @@ if __name__ == '__main__':
     params = parse_args('save_features')
 
     isAircraft = (params.dataset == 'aircrafts')
-    ## copy dataset to local for gypsum
-    if params.gypsum and (params.dataset in ['CUB','cars','aircrafts','flowers','dogs']):
-        from copy_local import *
-        print('Copying dataset to local...')
-        setup_dataset(params.dataset)
-        print('Finished copying dataset!')
 
     assert params.method != 'maml' and params.method != 'maml_approx', 'maml do not support save_feature and run'
 

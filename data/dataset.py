@@ -58,7 +58,7 @@ def get_patches(img, transform_jigsaw, transform_patch_jigsaw, permutations):
     return data, int(order)
 
 def retrive_permutations(classes):
-    all_perm = np.load('permutations_%d.npy' % (classes))
+    all_perm = np.load('data/permutations_%d.npy' % (classes))
     # from range [1,9] to [0,8]
     if all_perm.min() == 1:
         all_perm = all_perm - 1
