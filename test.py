@@ -14,11 +14,11 @@ import configs
 import backbone
 import data.feature_loader as feat_loader
 from data.datamgr import SetDataManager
-from methods.baselinetrain import BaselineTrain
-from methods.baselinefinetune import BaselineFinetune
+# from methods.baselinetrain import BaselineTrain
+# from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet
-from methods.matchingnet import MatchingNet
-from methods.relationnet import RelationNet
+# from methods.matchingnet import MatchingNet
+# from methods.relationnet import RelationNet
 from methods.maml import MAML
 from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
 
