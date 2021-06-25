@@ -10,7 +10,12 @@ config_dict = {
         'lr': {'values': [1e-2, 1e-3, 1e-4, 2e-2, 2e-3, 2e-4, 3e-2, 3e-3, 3e-4]},
         'stop_epoch': {'values': [150]},
         'optimization': {'values': ['Adam', 'SGD']},
-        'bn_type': {'values': [1, 2, 3]}       
+        'bn_type': {'values': [1, 2, 3]},
+        'train_aug': {'values': [True, False]},
+        # constants
+        'dataset': {'values': ['miniImagenet']},
+        'method': {'values': ['protonet']},
+        'model': {'values': ['resnet18']}
     }
 }
 

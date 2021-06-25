@@ -126,6 +126,8 @@ if __name__=='__main__':
     elif params.bn_type == 3:
         params.no_bn = True
         params.tracking = False
+    else:
+        raise Exception("Unrecognized BN Type: ", print(params.bn_type), " of type ", type(params.bn_type))
 
     print(params.no_bn)
     print(params.tracking)

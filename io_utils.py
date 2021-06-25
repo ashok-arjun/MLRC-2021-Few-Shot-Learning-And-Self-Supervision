@@ -78,7 +78,7 @@ def parse_args(script):
 
     parser.add_argument('--dataset_unlabel'     , default=None,        help='CUB/miniImagenet/cross/omniglot/cross_char')
 
-    parser.add_argument('--bn_type', default=1, help="1 for BN+Tracking. 2 for BN + no tracking, 3 for no BN. BN --> BatchNorm")
+    parser.add_argument('--bn_type', default=1, type=int, help="1 for BN+Tracking. 2 for BN + no tracking, 3 for no BN. BN --> BatchNorm")
 
     parser.add_argument('--test_bs'          , default=64, type=int,  help='batch size for testing w/o batchnorm')
     parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
