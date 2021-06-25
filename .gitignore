@@ -146,6 +146,7 @@ cython_debug/
 checkpoints/*
 features/*
 filelists/miniImagenet/ILSVRC2015/*
+filelists/miniImagenet/images
 filelists/CUB/images
 filelists/CUB/images_cropped
 filelists/cars/images

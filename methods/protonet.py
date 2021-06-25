@@ -12,13 +12,13 @@ from itertools import cycle
 
 import wandb
 
-# try:
-#     from apex.parallel import DistributedDataParallel as DDP
-#     from apex.fp16_utils import *
-#     from apex import amp, optimizers
-#     from apex.multi_tensor_apply import multi_tensor_applier
-# except ImportError:
-#     raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run the code.")
+try:
+    from apex.parallel import DistributedDataParallel as DDP
+    from apex.fp16_utils import *
+    from apex import amp, optimizers
+    from apex.multi_tensor_apply import multi_tensor_applier
+except ImportError:
+    print("AMP is not installed. If --amp is True, code will fail.")
     
 from io_utils import data_prefetcher
 
