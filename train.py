@@ -70,7 +70,7 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
         start_time = time.time()
         
         model.train()
-        model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp) #model are called by reference, no need to return 
+        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp) #model are called by reference, no need to return 
         
         end_time = time.time()
         
@@ -79,7 +79,10 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
         
         pbar.write(u'\u2713' + ' Epoch: %d; Time taken: %d sec.' % (epoch, end_time-start_time))
 
-        if epoch % eval_interval == True or epoch == stop_epoch - 1: 
+        if(avg_loss == float('inf') or avg_loss == 0):
+            raise Exception("avg_loss is: ", avg_loss)
+
+        if epoch % eval_interval == 0 or epoch == stop_epoch - 1: 
             model.eval()
             if not os.path.isdir(params.checkpoint_dir):
                 os.makedirs(params.checkpoint_dir)

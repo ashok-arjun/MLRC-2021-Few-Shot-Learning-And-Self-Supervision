@@ -192,6 +192,8 @@ class ProtoNet(MetaTemplate):
                     wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
                     wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
 
+        return avg_loss
+
     def test_loop(self, test_loader, record = None):
         correct =0
         count = 0

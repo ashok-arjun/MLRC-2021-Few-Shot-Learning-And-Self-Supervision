@@ -5,6 +5,7 @@ import wandb
 config_dict = {
     'program': 'train.py',
     'method': 'random',
+    'name': 'miniImagenet Protonet sweep', # NOTE: varies
     'metric': {'goal': 'minimize', 'name': 'val_loss'},
     'parameters': {
         'lr': {'values': [1e-2, 1e-3, 1e-4, 2e-2, 2e-3, 2e-4, 3e-2, 3e-3, 3e-4]},
@@ -15,7 +16,8 @@ config_dict = {
         # constants
         'dataset': {'values': ['miniImagenet']},
         'method': {'values': ['protonet']},
-        'model': {'values': ['resnet18']}
+        'model': {'values': ['resnet18']},
+        'amp': {'values': [True]}
     }
 }
 

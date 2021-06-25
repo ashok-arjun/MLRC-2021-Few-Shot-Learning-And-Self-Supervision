@@ -130,6 +130,8 @@ class ProtoNet(MetaTemplate):
                 avg_loss_rotation += loss_rotation.data
                 wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
                 wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
+        
+        return avg_loss
 
     def test_loop(self, test_loader, record = None, jigsaw_loader=None):
         correct =0

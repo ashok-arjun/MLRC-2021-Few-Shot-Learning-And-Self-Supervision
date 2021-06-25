@@ -233,7 +233,9 @@ class MAML(MetaTemplate):
                         format(epoch, i+1, len(train_loader), avg_loss/float(i+1), avg_loss_maml/float(i+1), avg_loss_rotation/float(i+1)))
                 else:
                     print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i+1, len(train_loader), avg_loss/float(i+1)))
-                      
+        
+        return avg_loss
+
     def test_loop(self, test_loader, return_std = False): #overwrite parrent function
         correct =0
         count = 0
