@@ -3,7 +3,7 @@ import shutil
 
 """miniImageNet"""
 
-root = "./filelists/miniImagenet/images"
+root = "./filelists/miniImagenet/images/"
 
 subdirectories = [root + x for x in os.listdir(root)]
 
