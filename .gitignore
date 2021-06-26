@@ -162,3 +162,5 @@ CUB/*
 *.jpg
 *.jpeg
 .ipynb_checkpoints/*
+filelists/dogs/Images
+install.sh
