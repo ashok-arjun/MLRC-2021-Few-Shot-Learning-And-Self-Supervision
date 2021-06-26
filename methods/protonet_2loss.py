@@ -23,8 +23,8 @@ from utils.io_utils import data_prefetcher
 
 
 class ProtoNet(MetaTemplate):
-    def __init__(self, model_func,  n_way, n_support, jigsaw=False, lbda=0.0, rotation=False, tracking=False, lbda_jigsaw=0.0, lbda_rotation=0.0, use_bn=True):
-        super(ProtoNet, self).__init__( model_func,  n_way, n_support, use_bn, tracking=tracking)
+    def __init__(self, model_func,  n_way, n_support, jigsaw=False, lbda=0.0, rotation=False, tracking=False, lbda_jigsaw=0.0, lbda_rotation=0.0, use_bn=True, pretrain=False):
+        super(ProtoNet, self).__init__( model_func,  n_way, n_support, use_bn, pretrain, tracking=tracking)
         self.loss_fn = nn.CrossEntropyLoss()
 
         self.jigsaw = jigsaw
