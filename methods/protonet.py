@@ -24,13 +24,15 @@ from utils.io_utils import data_prefetcher
 
 
 class ProtoNet(MetaTemplate):
-    def __init__(self, model_func,  n_way, n_support, jigsaw=False, lbda=0.0, rotation=False, tracking=False, use_bn=True, pretrain=False):
+    def __init__(self, model_func,  n_way, n_support, jigsaw=False, lbda=0.0, rotation=False, tracking=False, lbda_jigsaw=0.0, lbda_rotation=0.0, use_bn=True, pretrain=False):
         super(ProtoNet, self).__init__(model_func,  n_way, n_support, use_bn, pretrain, tracking=tracking)
         self.loss_fn = nn.CrossEntropyLoss()
 
         self.jigsaw = jigsaw
         self.rotation = rotation
         self.lbda = lbda
+        self.lbda_jigsaw = lbda_jigsaw
+        self.lbda_rotation = lbda_rotation
         # self.lbda_proto = lbda_proto
         self.global_count = 0
         if self.jigsaw:
@@ -73,124 +75,57 @@ class ProtoNet(MetaTemplate):
 
         iter_num = 0 
         max_iter = len(train_loader)
-
-        if base_loader_u is not None:
-            # import ipdb; ipdb.set_trace()
-            # temp = 0
-            # from itertools import cycle
-            # for i,_ in enumerate(zip(train_loader,cycle(base_loader_u))):
-            #     temp += 1
-            # print(temp)
-            # temp = 0
-            # for i,_ in enumerate(train_loader):
-            #     temp += 1
-            # print(temp)
-            # temp = 0
-            # for i,_ in enumerate(base_loader_u):
-            #     temp += 1
-            # print(temp)
-            # exit(0)
-
-            while iter_num < max_iter:
-                iter_num += 1
-                try:
-                    inputs = iter_loader.next()
-                except:
-                    iter_loader = data_prefetcher(train_loader)
-                    inputs = iter_loader.next()
-                self.global_count += 1
-                x = inputs[0][0]
-                # import ipdb; ipdb.set_trace()
-                self.n_query = x.size(1) - self.n_support           
-                if self.change_way:
-                    self.n_way  = x.size(0)
-                optimizer.zero_grad()
-                # import ipdb; ipdb.set_trace()
-                loss_proto, acc = self.set_forward_loss(x)
-                if self.jigsaw:
-                    # import ipdb; ipdb.set_trace()
-                    loss_jigsaw, acc_jigsaw = self.set_forward_loss_unlabel(inputs[1][2], inputs[1][3])# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
-                    loss = (1.0-self.lbda) * loss_proto + self.lbda * loss_jigsaw
-                    # loss = 0.0 * loss_proto + self.lbda * loss_jigsaw
-                    wandb.log({'train/loss_proto': float(loss_proto.item())}, step=self.global_count)
-                    wandb.log({'train/loss_jigsaw': float(loss_jigsaw.item())}, step=self.global_count)
-                elif self.rotation:
-                    # import ipdb; ipdb.set_trace()
-                    loss_rotation, acc_rotation = self.set_forward_loss_unlabel(inputs[1][2], inputs[1][3])# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
-                    loss = (1.0-self.lbda) * loss_proto + self.lbda * loss_rotation
-                    wandb.log({'train/loss_proto': float(loss_proto.item())}, step=self.global_count)
-                    wandb.log({'train/loss_rotation': float(loss_rotation.item())}, step=self.global_count)
-                else:
-                    loss = loss_proto
-                loss.backward()
-                optimizer.step()
-                # avg_loss = avg_loss+loss.data[0]
-                avg_loss = avg_loss+loss.data
-                wandb.log({'train/loss': float(loss.item())}, step=self.global_count)
-
-                if self.jigsaw:
-                    avg_loss_proto += loss_proto.data
-                    avg_loss_jigsaw += loss_jigsaw.data
-                    wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
-                    wandb.log({'train/acc_jigsaw': float(acc_jigsaw.item())}, step=self.global_count)
-                elif self.rotation:
-                    avg_loss_proto += loss_proto.data
-                    avg_loss_rotation += loss_rotation.data
-                    wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
-                    wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
-                    
-        else:
-
-            while iter_num < max_iter:
-                iter_num += 1
-                try:
-                    inputs = iter_loader.next()
-                except:
-                    iter_loader = data_prefetcher(train_loader)
-                    inputs = iter_loader.next()
-                self.global_count += 1
-                x = inputs[0]
-                self.n_query = x.size(1) - self.n_support           
-                if self.change_way:
-                    self.n_way  = x.size(0)
-                optimizer.zero_grad()
-                loss_proto, acc = self.set_forward_loss(x)
-                if self.jigsaw:
-                    loss_jigsaw, acc_jigsaw = self.set_forward_loss_unlabel(inputs[2], inputs[3])# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
-                    loss = (1.0-self.lbda) * loss_proto + self.lbda * loss_jigsaw
-                    # loss = 0.0 * loss_proto + self.lbda * loss_jigsaw
-                    wandb.log({'train/loss_proto': float(loss_proto.item())}, step=self.global_count)
-                    wandb.log({'train/loss_jigsaw': float(loss_jigsaw.item())}, step=self.global_count)
-                elif self.rotation:
-                    loss_rotation, acc_rotation = self.set_forward_loss_unlabel(inputs[2], inputs[3])# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
-                    loss = (1.0-self.lbda) * loss_proto + self.lbda * loss_rotation
-                    wandb.log({'train/loss_proto': float(loss_proto.item())}, step=self.global_count)
-                    wandb.log({'train/loss_rotation': float(loss_rotation.item())}, step=self.global_count)
-                else:
-                    loss = loss_proto
-                    
-                if enable_amp:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:   
-                    loss.backward()
-                optimizer.step()
-                # avg_loss = avg_loss+loss.data[0]
-                avg_loss = avg_loss+loss.item()
-                wandb.log({'train/loss': float(loss.item())}, step=self.global_count)
-
-                pbar.update(1)
+    
+        while iter_num < max_iter:
+            iter_num += 1
+            try:
+                inputs = iter_loader.next()
+            except:
+                iter_loader = data_prefetcher(train_loader)
+                inputs = iter_loader.next()
+            self.global_count += 1
+            x = inputs[0]
+            self.n_query = x.size(1) - self.n_support           
+            if self.change_way:
+                self.n_way  = x.size(0)
+            optimizer.zero_grad()
+            loss_proto, acc = self.set_forward_loss(x)
+            if self.jigsaw:
+                loss_jigsaw, acc_jigsaw = self.set_forward_loss_unlabel(inputs[2], inputs[3])# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
+                loss = (1.0-self.lbda) * loss_proto + self.lbda * loss_jigsaw
+                # loss = 0.0 * loss_proto + self.lbda * loss_jigsaw
+                wandb.log({'train/loss_proto': float(loss_proto.item())}, step=self.global_count)
+                wandb.log({'train/loss_jigsaw': float(loss_jigsaw.item())}, step=self.global_count)
+            elif self.rotation:
+                loss_rotation, acc_rotation = self.set_forward_loss_unlabel(inputs[2], inputs[3])# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
+                loss = (1.0-self.lbda) * loss_proto + self.lbda * loss_rotation
+                wandb.log({'train/loss_proto': float(loss_proto.item())}, step=self.global_count)
+                wandb.log({'train/loss_rotation': float(loss_rotation.item())}, step=self.global_count)
+            else:
+                loss = loss_proto
                 
-                if self.jigsaw:
-                    avg_loss_proto += loss_proto.data
-                    avg_loss_jigsaw += loss_jigsaw.data
-                    wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
-                    wandb.log({'train/acc_jigsaw': float(acc_jigsaw.item())}, step=self.global_count)
-                elif self.rotation:
-                    avg_loss_proto += loss_proto.data
-                    avg_loss_rotation += loss_rotation.data
-                    wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
-                    wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
+            if enable_amp:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:   
+                loss.backward()
+            optimizer.step()
+            # avg_loss = avg_loss+loss.data[0]
+            avg_loss = avg_loss+loss.item()
+            wandb.log({'train/loss': float(loss.item())}, step=self.global_count)
+
+            pbar.update(1)
+            
+            if self.jigsaw:
+                avg_loss_proto += loss_proto.data
+                avg_loss_jigsaw += loss_jigsaw.data
+                wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
+                wandb.log({'train/acc_jigsaw': float(acc_jigsaw.item())}, step=self.global_count)
+            elif self.rotation:
+                avg_loss_proto += loss_proto.data
+                avg_loss_rotation += loss_rotation.data
+                wandb.log({'train/acc_proto': float(acc.item())}, step=self.global_count)
+                wandb.log({'train/acc_rotation': float(acc_rotation.item())}, step=self.global_count)
 
         return avg_loss
 

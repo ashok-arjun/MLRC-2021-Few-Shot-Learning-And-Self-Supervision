@@ -19,7 +19,8 @@ config_dict = {
         'dataset': {'values': ['miniImagenet']},
         'method': {'values': ['protonet']},
         'model': {'values': ['resnet18']},
-        'amp': {'values': [False]}
+        'amp': {'values': [False]},
+        "run_type": {'values': [0]}
     }
 }
 
