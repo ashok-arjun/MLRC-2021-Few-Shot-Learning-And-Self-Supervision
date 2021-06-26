@@ -23,15 +23,17 @@ set_seed(params.seed)
 import config.configs as configs
 import models.backbone as backbone
 
-if params.run_type == "0":
+if params.run_type == 0:
     from data.datamgr import SimpleDataManager, SetDataManager
     from methods.protonet import ProtoNet
-elif params.run_type == "1":
+elif params.run_type == 1:
     from data.datamgr_2loss import SimpleDataManager, SetDataManager
     from methods.protonet_2loss import ProtoNet
-elif params.run_type == "2":
+elif params.run_type == 2:
     from data.datamgr_unlabel import SimpleDataManager, SetDataManager
     from methods.protonet_unlabel import ProtoNet
+else:
+    raise Exception("Unknown run_type")
     
 from utils.io_utils import model_dict, get_resume_file, get_best_file, get_assigned_file
 import json
@@ -492,6 +494,23 @@ if __name__=='__main__':
         from save_features import save_features
         save_features(model, data_loader, outfile)
 
+
+        ### from test.py ###
+        from test import feature_evaluation
+        novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
+        print('load novel file from:',novel_file)
+        import data.feature_loader as feat_loader
+        cl_data_file = feat_loader.init_loader(novel_file)
+        
+        j = 0
+        for i in range(iter_num_breakpoints[-1]):
+            if i+1 % iter_num_breakpoints[j]:
+                write_result()
+                wandb.log({"test/acc": acc_mean, "episodes": iter_num_breakpoints[j]})
+                j += 1
+            acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
+            acc_all.append(acc)
+
         ## By Arjun
 
         def write_result():
@@ -512,21 +531,6 @@ if __name__=='__main__':
                 acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
                 f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
-        ### from test.py ###
-        from test import feature_evaluation
-        novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
-        print('load novel file from:',novel_file)
-        import data.feature_loader as feat_loader
-        cl_data_file = feat_loader.init_loader(novel_file)
-        
-        j = 0
-        for i in range(iter_num_breakpoints[-1]):
-            if i+1 % iter_num_breakpoints[j]:
-                write_result()
-                wandb.log({"test/acc": acc_mean, "episodes": iter_num_breakpoints[j]})
-                j += 1
-            acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
-            acc_all.append(acc)
 
 
         
