@@ -404,7 +404,6 @@ if __name__=='__main__':
     else:
         split_str = split
 
-    iter_num_breakpoints = [100,300,600,900,1200]
     iter_num = 600
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     acc_all = []
@@ -494,7 +493,6 @@ if __name__=='__main__':
         from save_features import save_features
         save_features(model, data_loader, outfile)
 
-
         ### from test.py ###
         from test import feature_evaluation
         novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
@@ -502,35 +500,27 @@ if __name__=='__main__':
         import data.feature_loader as feat_loader
         cl_data_file = feat_loader.init_loader(novel_file)
         
-        j = 0
-        for i in range(iter_num_breakpoints[-1]):
-            if i+1 % iter_num_breakpoints[j]:
-                write_result()
-                wandb.log({"test/acc": acc_mean, "episodes": iter_num_breakpoints[j]})
-                j += 1
+        for i in range(0, iter_num):
             acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
             acc_all.append(acc)
 
-        ## By Arjun
+        acc_all  = np.asarray(acc_all)
+        acc_mean = np.mean(acc_all)
+        acc_std  = np.std(acc_all)
+        print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
 
-        def write_result():
+        wandb.log({"test/acc": np.mean(acc_all), "episodes": iter_num})
 
-            acc_all  = np.asarray(acc_all)
-            acc_mean = np.mean(acc_all)
-            acc_std  = np.std(acc_all)
-            print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
-            
-            with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
-                timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-                aug_str = '-aug' if params.train_aug else ''
-                aug_str += '-adapted' if params.adaptation else ''
-                if params.method in ['baseline', 'baseline++'] :
-                    exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
-                else:
-                    exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-                acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
-                f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
-
+        with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
+            timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+            aug_str = '-aug' if params.train_aug else ''
+            aug_str += '-adapted' if params.adaptation else ''
+            if params.method in ['baseline', 'baseline++'] :
+                exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
+            else:
+                exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
+            acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+            f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
 
         
