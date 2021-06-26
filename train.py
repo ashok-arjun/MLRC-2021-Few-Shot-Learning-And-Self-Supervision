@@ -22,13 +22,17 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 import config.configs as configs
 import models.backbone as backbone
-from data.datamgr import SimpleDataManager, SetDataManager
-# from methods.baselinetrain import BaselineTrain
-# from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
-# from methods.matchingnet import MatchingNet
-# from methods.relationnet import RelationNet
-from methods.maml import MAML
+
+if params.run_type == "0":
+    from data.datamgr import SimpleDataManager, SetDataManager
+    from methods.protonet import ProtoNet
+elif params.run_type == "1":
+    from data.datamgr_2loss import SimpleDataManager, SetDataManager
+    from methods.protonet_2loss import ProtoNet
+elif params.run_type == "2":
+    from data.datamgr_unlabel import SimpleDataManager, SetDataManager
+    from methods.protonet_unlabel import ProtoNet
+    
 from utils.io_utils import model_dict, get_resume_file, get_best_file, get_assigned_file
 import json
 from models.model_resnet import *
@@ -232,7 +236,7 @@ if __name__=='__main__':
          
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
-        val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 

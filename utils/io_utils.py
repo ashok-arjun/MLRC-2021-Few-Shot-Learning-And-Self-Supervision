@@ -88,6 +88,7 @@ def parse_args(script):
     parser.add_argument('--device', type=str, default="0", help='GPU') #never used in the paper
     parser.add_argument('--seed', type=int, default=10)
     parser.add_argument('--amp', type=str2bool, nargs='?', default=False, const=True, help='amp') #never used in the paper
+    parser.add_argument('--run_type', default=0, type=int, help="0 - normal, 1- 2_loss, 2 - unlabelled")
 
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class

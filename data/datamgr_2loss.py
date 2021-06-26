@@ -7,6 +7,7 @@ import torchvision.transforms as transforms
 import data.additional_transforms as add_transforms
 from data.dataset_2loss import SimpleDataset, SetDataset, EpisodicBatchSampler
 from abc import abstractmethod
+import random
 
 NUM_WORKERS=12
 
