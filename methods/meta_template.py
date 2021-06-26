@@ -1,13 +1,13 @@
-import backbone
+import models.backbone as backbone
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
-import utils
+import utils.utils
 from abc import abstractmethod
-from model_resnet import *
-from resnet_pytorch import *
+from models.model_resnet import *
+from models.resnet_pytorch import *
 
 class MetaTemplate(nn.Module):
     def __init__(self, model_func, n_way, n_support, use_bn, pretrain, change_way = True, tracking=False):

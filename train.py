@@ -7,7 +7,7 @@ import os
 import glob
 import random
 
-from io_utils import set_seed, parse_args
+from utils.io_utils import set_seed, parse_args
 
 params = parse_args('train')
 os.environ["CUDA_VISIBLE_DEVICES"] = params.device
@@ -20,8 +20,8 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 # set_seed(params.seed)
 
-import configs
-import backbone
+import config.configs as configs
+import models.backbone as backbone
 from data.datamgr import SimpleDataManager, SetDataManager
 # from methods.baselinetrain import BaselineTrain
 # from methods.baselinefinetune import BaselineFinetune
@@ -29,10 +29,10 @@ from methods.protonet import ProtoNet
 # from methods.matchingnet import MatchingNet
 # from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, get_resume_file, get_best_file, get_assigned_file
+from utils.io_utils import model_dict, get_resume_file, get_best_file, get_assigned_file
 import json
-from model_resnet import *
-from utils import RunningAverage
+from models.model_resnet import *
+from utils.utils import RunningAverage
 from tqdm import tqdm
 
 import wandb

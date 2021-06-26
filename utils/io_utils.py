@@ -2,8 +2,8 @@ import numpy as np
 import os
 import glob
 import argparse
-import backbone
-from model_resnet import *
+import models.backbone as backbone
+from models.model_resnet import *
 
 model_dict = dict(
             Conv4 = backbone.Conv4,

@@ -1,13 +1,13 @@
 # This code is modified from https://github.com/jakesnell/prototypical-networks 
 
-import backbone
+import models.backbone as backbone
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
 from methods.meta_template import MetaTemplate
-from model_resnet import *
+from models.model_resnet import *
 from itertools import cycle
 
 import wandb
@@ -20,7 +20,7 @@ try:
 except ImportError:
     print("AMP is not installed. If --amp is True, code will fail.")
     
-from io_utils import data_prefetcher
+from utils.io_utils import data_prefetcher
 
 
 class ProtoNet(MetaTemplate):
