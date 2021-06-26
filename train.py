@@ -86,7 +86,13 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
             if not os.path.isdir(params.checkpoint_dir):
                 os.makedirs(params.checkpoint_dir)
 
-            if params.jigsaw:
+            if params.jigsaw and params.rotation:
+                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader)
+                wandb.log({'val/acc': acc}, step=model.global_count)
+                wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
+                wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
+
+            elif params.jigsaw:
                 acc, acc_jigsaw = model.test_loop( val_loader)
 
                 wandb.log({'val/acc': acc}, step=model.global_count)
@@ -230,12 +236,12 @@ if __name__=='__main__':
  
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
-                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
+                                        jigsaw=params.jigsaw, lbda=params.lbda,  rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
         base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
-                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation) 
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
         val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
@@ -300,14 +306,16 @@ if __name__=='__main__':
     if params.grey:
         params.checkpoint_dir += '_grey'
 
+    if params.jigsaw and params.rotation:
+        params.checkpoint_dir += '_jigsaw_lbda%.2f_rotation_lbda%.2f'%(params.lbda_jigsaw, params.lbda_rotation)
     ## Add jigsaw
-    if params.jigsaw:
-        params.checkpoint_dir += '_jigsawonly_alldata_lbda%.2f'%(params.lbda)
-        params.checkpoint_dir += params.optimization
+    elif params.jigsaw:
+        params.checkpoint_dir += '_jigsaw_lbda%.2f'%(params.lbda)
     ## Add rotation
-    if params.rotation:
+    elif params.rotation:
         params.checkpoint_dir += '_rotation_lbda%.2f'%(params.lbda)
-        params.checkpoint_dir += params.optimization
+
+    params.checkpoint_dir += params.optimization
 
     params.checkpoint_dir += '_lr%.4f'%(params.lr)
     if params.finetune:
