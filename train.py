@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import numpy as np
 import time
 import os
@@ -40,19 +43,10 @@ try:
     from apex import amp, optimizers
     from apex.multi_tensor_apply import multi_tensor_applier
 except ImportError:
-    print("AMP is not installed. If --amp is True, code will fail.")
+    print("AMP is not installed. If --amp is True, code will fail.")    
+
+def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params):    
     
-
-def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):    
-    if params.optimization == 'Adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=params.lr)
-    elif params.optimization == 'SGD':
-        optimizer = torch.optim.SGD(model.parameters(), lr=params.lr)
-    elif params.optimization == 'Nesterov':
-        optimizer = torch.optim.SGD(model.parameters(), lr=params.lr, nesterov=True, momentum=0.9, weight_decay=params.wd)
-    else:
-       raise ValueError('Unknown optimization, please define by yourself')
-
     if params.amp:
         print("-----------Using mixed precision-----------") 
         model, optimizer = amp.initialize(model, optimizer)
@@ -65,6 +59,7 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
     pbar.update(start_epoch*len(base_loader))
     pbar.refresh()
     
+    model.global_count = start_epoch*len(base_loader)
     
     for epoch in range(start_epoch,stop_epoch):
         start_time = time.time()
@@ -265,6 +260,15 @@ if __name__=='__main__':
     model.feature = model.feature.cuda()
     # import ipdb; ipdb.set_trace()
 
+    if params.optimization == 'Adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=params.lr)
+    elif params.optimization == 'SGD':
+        optimizer = torch.optim.SGD(model.parameters(), lr=params.lr)
+    elif params.optimization == 'Nesterov':
+        optimizer = torch.optim.SGD(model.parameters(), lr=params.lr, nesterov=True, momentum=0.9, weight_decay=params.wd)
+    else:
+       raise ValueError('Unknown optimization, please define by yourself')
+
     if params.json_seed is not None:
         params.checkpoint_dir = '%s/checkpoints/%s_%s/%s_%s_%s' %(configs.save_dir, params.dataset, params.json_seed, params.date, params.model, params.method)
     else:
@@ -331,6 +335,15 @@ if __name__=='__main__':
             model.load_state_dict(tmp['state'])
             optimizer.load_state_dict(tmp['optimizer'])
             del tmp
+
+        if not params.run_name:
+            raise Exception("Resume run name not given.")
+
+        print("Resuming run %s from epoch %d" % (params.run_name, start_epoch))
+
+        wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners", id=params.run_name, resume=True)        
+        wandb.watch(model)
+
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
         baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')
         if params.train_aug:
@@ -360,16 +373,14 @@ if __name__=='__main__':
         print('Load model from:',params.loadfile)
         model.load_state_dict(pretrained_dict, strict=False)
 
-    json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))
+    if not params.resume:
+
+        json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))        
+        wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners")        
+        wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
+        wandb.watch(model)    
     
-    wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners")
-    
-    wandb.run.name = wandb.run.id if not params.run_name else params.run_name
-    # wandb.run.save()
-    
-    wandb.watch(model)    
-    
-    train(base_loader, val_loader,  model, start_epoch, stop_epoch, params)
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params)
 
 
     ##### save_features (except maml) and test, added by me #####

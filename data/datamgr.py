@@ -9,7 +9,7 @@ from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler
 from abc import abstractmethod
 import random
 
-NUM_WORKERS=12
+NUM_WORKERS=16
 
 class TransformLoader:
     def __init__(self, image_size, 
