@@ -59,7 +59,9 @@ def parse_args(script):
     parser.add_argument('--date'       , default='', type=str,  help='date of the exp')
 
     parser.add_argument('--rotation'    , action='store_true',  help='multi-task training')
-    parser.add_argument('--grey'        , action='store_true',  help='use grey image')
+    parser.add_argument('--grey'        , action='store_true',  help='use grey image')  # Use for CUB, dogs and flowers only
+    parser.add_argument('--low_res', type=str2bool, nargs='?', default=False, const=True, help='semi_sup')  # Use for cars and aircrafts only
+
     parser.add_argument('--firstk'      , default=0, type=int, help='first k images per class for training CUB')
 
     parser.add_argument('--testiter'       , default=199, type=int,  help='date of the exp')
@@ -105,7 +107,6 @@ def parse_args(script):
         ## Semi-supervised learning - incorporates jigsaw and/or rotation into the class prototypes also - NOTE: only when training
 
         parser.add_argument('--semi_sup', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
-        parser.add_argument('--low_res', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
 
     
     # elif script == 'save_features':
