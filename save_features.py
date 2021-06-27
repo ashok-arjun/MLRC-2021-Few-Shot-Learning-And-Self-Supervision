@@ -7,13 +7,13 @@ import h5py
 
 import config.configs as configs
 import models.backbone as backbone
-from data.datamgr import SimpleDataManager
+# from data.datamgr import SimpleDataManager
 # from methods.baselinetrain import BaselineTrain
 # from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
+# from methods.protonet import ProtoNet
 # from methods.matchingnet import MatchingNet
 # from methods.relationnet import RelationNet
-from methods.maml import MAML
+# from methods.maml import MAML
 from utils.io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file
 from models.model_resnet import *
 

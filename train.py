@@ -42,7 +42,7 @@ try:
 except ImportError:
     print("AMP is not installed. If --amp is True, code will fail.")    
 
-def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None):    
+def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None, semi_sup=False, self_sup_origin="own"):    
     
     if params.amp:
         print("-----------Using mixed precision-----------") 
@@ -62,7 +62,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
         start_time = time.time()
         
         model.train()
-        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp, base_loader_u=base_loader_u) #model are called by reference, no need to return 
+        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin) 
         
         end_time = time.time()
         
@@ -80,23 +80,23 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
                 os.makedirs(params.checkpoint_dir)
 
             if params.jigsaw and params.rotation:
-                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader)
+                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
 
             elif params.jigsaw:
-                acc, acc_jigsaw = model.test_loop( val_loader)
+                acc, acc_jigsaw = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
 
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
 
             elif params.rotation:
-                acc, acc_rotation = model.test_loop( val_loader)
+                acc, acc_rotation = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
             else:    
-                acc = model.test_loop( val_loader)
+                acc = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
                 wandb.log({'val/acc': acc}, step=model.global_count)
             if acc > max_acc : 
                 max_acc = acc
@@ -114,7 +114,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
 if __name__=='__main__':
     np.random.seed(10)    
     
-    torch.cuda.set_device(int(params.device[0])) # Remove this when using DDP    
+    torch.cuda.set_device(int(params.device[0])) 
 
     isAircraft = (params.dataset == 'aircrafts')
 
@@ -224,7 +224,7 @@ if __name__=='__main__':
         n_query = max(1, int(params.n_query * params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
         print('n_query:',n_query)
 
-        base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=False)
+        base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
         if params.dataset_unlabel is not None:
             base_file_unlabel = os.path.join('filelists', params.dataset_unlabel, 'base.json')
             print("base file for unlabeled dataset is:", base_file_unlabel)
@@ -390,7 +390,7 @@ if __name__=='__main__':
         wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
         wandb.watch(model)    
     
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u)
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, semi_sup=params.semi_sup, self_sup_origin="unlabel" if params.dataset_unlabel else "none")
 
 
     ##### save_features (except maml) and test, added by me #####

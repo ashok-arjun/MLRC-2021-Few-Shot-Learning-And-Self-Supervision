@@ -13,13 +13,13 @@ import time
 import config.configs as configs
 import models.backbone as backbone
 import data.feature_loader as feat_loader
-from data.datamgr import SetDataManager
+# from data.datamgr import SetDataManager
 # from methods.baselinetrain import BaselineTrain
 # from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
+# from methods.protonet import ProtoNet
 # from methods.matchingnet import MatchingNet
 # from methods.relationnet import RelationNet
-from methods.maml import MAML
+# from methods.maml import MAML
 from utils.io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
 
 def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False):
