@@ -140,13 +140,14 @@ class SimpleDataset:
 
 class SetDataset:
     def __init__(self, data_file, batch_size, transform, jigsaw=False, \
-                transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False):
+                transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None):
         self.jigsaw = jigsaw
         self.transform_jigsaw = transform_jigsaw
         self.transform_patch_jigsaw = transform_patch_jigsaw
         self.rotation = rotation
         self.isAircraft = isAircraft
         self.grey = grey
+        self.low_res = low_res
 
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
@@ -168,7 +169,7 @@ class SetDataset:
         for cl in self.cl_list:
             sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform, jigsaw=self.jigsaw, \
                                     transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
-                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey)
+                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size)
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
     def __getitem__(self,i):
@@ -179,7 +180,7 @@ class SetDataset:
 
 class SubDataset:
     def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity, \
-                jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False):
+                jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None):
         self.sub_meta = sub_meta
         self.cl = cl 
         self.transform = transform
@@ -189,11 +190,21 @@ class SubDataset:
         self.isAircraft = False#isAircraft
         self.grey = grey
 
+        self.low_res = low_res
+
         self.jigsaw = jigsaw
         if jigsaw:
             self.permutations = retrive_permutations(35)
             self.transform_jigsaw = transform_jigsaw
             self.transform_patch_jigsaw = transform_patch_jigsaw
+
+        if low_res:
+            self.low_res_transform = transforms.Compose(
+                                                        [
+                                                            transforms.Resize((image_size/4, image_size/4)),
+                                                            transforms.Resize((image_size, image_size))
+                                                        ]
+                                                    )
 
     def __getitem__(self,i):
         image_path = os.path.join(self.sub_meta[i])
@@ -222,8 +233,14 @@ class SubDataset:
                     self.transform(img.rotate(270,expand=True))
                 ]
             rotation_labels = torch.LongTensor([0, 1, 2, 3])
+
+        if low_res:
+            img = self.low_res_transform(img)
         img = self.transform(img)
         target = self.target_transform(self.cl)        
+
+    
+
 
         if self.jigsaw and self.rotation:
             return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels

@@ -105,6 +105,7 @@ def parse_args(script):
         ## Semi-supervised learning - incorporates jigsaw and/or rotation into the class prototypes also - NOTE: only when training
 
         parser.add_argument('--semi_sup', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
+        parser.add_argument('--low_res', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
 
     
     # elif script == 'save_features':

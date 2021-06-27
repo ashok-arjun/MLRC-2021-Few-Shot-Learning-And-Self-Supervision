@@ -126,12 +126,13 @@ class SimpleDataManager(DataManager):
 
 class SetDataManager(DataManager):
     def __init__(self, image_size, n_way, n_support, n_query, n_eposide =100, \
-                jigsaw=False, lbda=0.0, lbda_proto=0.0, rotation=False, isAircraft=False, grey=False, lbda_jigsaw=0.0, lbda_rotation=0.0):        
+                jigsaw=False, lbda=0.0, lbda_proto=0.0, rotation=False, isAircraft=False, grey=False, lbda_jigsaw=0.0, lbda_rotation=0.0, low_res=False):        
         super(SetDataManager, self).__init__()
         self.image_size = image_size
         self.n_way = n_way
         self.batch_size = n_support + n_query
         self.n_eposide = n_eposide
+        self.low_res = low_res
 
         if grey:
             self.trans_loader = TransformLoader(image_size, normalize_param = dict(mean= [0.449, 0.449, 0.449] , std=[0.226, 0.226, 0.226]))
@@ -182,7 +183,7 @@ class SetDataManager(DataManager):
 
         dataset = SetDataset(data_file , self.batch_size, transform, jigsaw=self.jigsaw, \
                             transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
-                            rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey)
+                            rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, image_size=self.image_size, low_res=self.low_res)
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_eposide )  
         data_loader_params = dict(batch_sampler = sampler,  num_workers = NUM_WORKERS, pin_memory = True)       
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
