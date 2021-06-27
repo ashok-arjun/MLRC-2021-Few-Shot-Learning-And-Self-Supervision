@@ -171,8 +171,6 @@ class SetDataset:
                                     rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey)
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
-        print("SetDataset initialized with self.rotation: %s and self.jigsaw %s" % (str(self.rotation), str(self.jigsaw)))
-
     def __getitem__(self,i):
         return next(iter(self.sub_dataloader[i]))
 
