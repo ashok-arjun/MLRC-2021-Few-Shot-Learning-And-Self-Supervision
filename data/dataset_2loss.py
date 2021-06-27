@@ -171,6 +171,8 @@ class SetDataset:
                                     rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey)
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
+        print("SetDataset initialized with self.rotation: %s and self.jigsaw %s" % (str(self.rotation), str(self.jigsaw)))
+
     def __getitem__(self,i):
         return next(iter(self.sub_dataloader[i]))
 
@@ -223,10 +225,10 @@ class SubDataset:
                 ]
             rotation_labels = torch.LongTensor([0, 1, 2, 3])
         img = self.transform(img)
-        target = self.target_transform(self.cl)
-        
+        target = self.target_transform(self.cl)        
+
         if self.jigsaw and self.rotation:
-        	return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels
+            return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels
         elif self.jigsaw:
             return img, target, patches, order
         elif self.rotation:

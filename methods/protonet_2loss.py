@@ -110,6 +110,7 @@ class ProtoNet(MetaTemplate):
             self.global_count += 1
             x = inputs[0]
             # import ipdb; ipdb.set_trace()
+
             self.n_query = x.size(1) - self.n_support           
             if self.change_way:
                 self.n_way  = x.size(0)
@@ -270,6 +271,17 @@ class ProtoNet(MetaTemplate):
             return float(top1_correct), float(top1_correct_rotation), len(y_query), len(y_)
         else:
             return float(top1_correct), len(y_query)
+
+    def set_forward_test(self,x,is_feature = False):
+        z_support, z_query  = self.parse_feature(x,is_feature)
+
+        z_support   = z_support.contiguous()
+        z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]
+        z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
+
+        dists = euclidean_dist(z_query, z_proto)
+        scores = -dists
+        return scores
 
     def set_forward(self,x,is_feature = False, patches=None, patches_label=None, patches_rotation=None, patches_label_rotation=None):
         z_support, z_query  = self.parse_feature(x,is_feature)

@@ -90,7 +90,7 @@ def parse_args(script):
     parser.add_argument('--device', type=str, default="0", help='GPU') #never used in the paper
     parser.add_argument('--seed', type=int, default=10)
     parser.add_argument('--amp', type=str2bool, nargs='?', default=False, const=True, help='amp') #never used in the paper
-    parser.add_argument('--run_type', default=0, type=int, help="0 - normal, 1- 2_loss, 2 - unlabelled")
+    parser.add_argument('--run_type', default=1, type=int, help="0 - normal, 1- 2_loss, 2 - unlabelled")
 
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
@@ -155,8 +155,10 @@ class data_prefetcher():
         torch.cuda.current_stream().wait_stream(self.stream)
         input = self.inputs[0]
         target = self.inputs[1]
-        aux_input = self.inputs[2] if len(self.inputs) == 4 else None
-        aux_label = self.inputs[3] if len(self.inputs) == 4 else None
+        aux_input = self.inputs[2] if len(self.inputs) >= 4 else None
+        aux_label = self.inputs[3] if len(self.inputs) >= 4 else None
+        aux_input_2 = self.inputs[4] if len(self.inputs) >= 5 else None
+        aux_label_2 = self.inputs[5] if len(self.inputs) >= 6 else None
 
         if input is not None:
             input.record_stream(torch.cuda.current_stream())
@@ -166,9 +168,13 @@ class data_prefetcher():
             aux_input.record_stream(torch.cuda.current_stream())
         if aux_label is not None:
             aux_label.record_stream(torch.cuda.current_stream())
+        if aux_input_2 is not None:
+            aux_input_2.record_stream(torch.cuda.current_stream())
+        if aux_label_2 is not None:
+            aux_label_2.record_stream(torch.cuda.current_stream())
             
         self.preload()
-        return input, target, aux_input, aux_label
+        return input, target, aux_input, aux_label, aux_input_2, aux_label_2
 
 def set_seed(seed):
     random.seed(seed)
