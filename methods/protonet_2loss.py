@@ -8,6 +8,7 @@ import numpy as np
 import torch.nn.functional as F
 from methods.meta_template import MetaTemplate
 from models.model_resnet import *
+from itertools import cycle
 
 import wandb
 
@@ -90,25 +91,29 @@ class ProtoNet(MetaTemplate):
             self.classifier_rotation.add_module('fc8',nn.Linear(128, 4))
 
 
-    def train_loop(self, epoch, train_loader, optimizer, pbar=None, enable_amp=None):
+    def train_loop(self, epoch, train_loader, optimizer, pbar=None, enable_amp=None, base_loader_u = None):
         avg_loss=0
         avg_loss_proto=0
         avg_loss_jigsaw=0
         avg_loss_rotation=0
-        # for i, (x,_ ) in enumerate(train_loader):
+
+        if base_loader_u:
+            loader = zip(train_loader, cycle(base_loader_u))
+        else:
+            loader = train_loader
 
         iter_num = 0 
-        max_iter = len(train_loader)
+        max_iter = len(loader)
 
         while iter_num < max_iter:
             iter_num += 1
             try:
                 inputs = iter_loader.next()
             except:
-                iter_loader = data_prefetcher(train_loader)
+                iter_loader = data_prefetcher(loader)
                 inputs = iter_loader.next()
             self.global_count += 1
-            x = inputs[0]
+            x = inputs[0] if not base_loader_u else inputs[0][0]
             # import ipdb; ipdb.set_trace()
 
             self.n_query = x.size(1) - self.n_support           
@@ -116,6 +121,8 @@ class ProtoNet(MetaTemplate):
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
             # import ipdb; ipdb.set_trace()
+            if base_loader_u:
+                inputs = inputs[1]
             if self.jigsaw and self.rotation:
                 loss_proto, loss_jigsaw, loss_rotation, acc, acc_jigsaw, acc_rotation = self.set_forward_loss( x, inputs[2], inputs[3], inputs[4], inputs[5] )# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
                 loss = (1.0-self.lbda_jigsaw-self.lbda_rotation) * loss_proto + self.lbda_jigsaw * loss_jigsaw + self.lbda_rotation * loss_rotation

@@ -87,10 +87,9 @@ def parse_args(script):
     parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
     parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
 
-    parser.add_argument('--device', type=str, default="0", help='GPU') #never used in the paper
-    parser.add_argument('--seed', type=int, default=10)
-    parser.add_argument('--amp', type=str2bool, nargs='?', default=False, const=True, help='amp') #never used in the paper
-    parser.add_argument('--run_type', default=1, type=int, help="0 - normal, 1- 2_loss, 2 - unlabelled")
+    parser.add_argument('--device', type=str, default="0", help='GPU')
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--amp', type=str2bool, nargs='?', default=False, const=True, help='amp') 
 
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
@@ -99,11 +98,14 @@ def parse_args(script):
         parser.add_argument('--stop_epoch'  , default=400, type=int, help ='Stopping epoch') # for meta-learning methods, each epoch contains 100 episodes
         parser.add_argument('--resume'      , action='store_true', help='continue from previous trained model with largest epoch')
         parser.add_argument('--warmup'      , action='store_true', help='continue from baseline, neglected if resume is true') #never used in the paper
-    
+
         parser.add_argument('--eval_interval', type=int, default=50, help='eval_interval') 
         parser.add_argument('--run_name', default=None, help="wandb run name")
 
-    
+        ## Semi-supervised learning - incorporates jigsaw and/or rotation into the class prototypes also - NOTE: only when training
+
+        parser.add_argument('--semi_sup', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
+
     
     # elif script == 'save_features':
     #     parser.add_argument('--test_bs'          , default=64, type=int,  help='batch size for testing w/o batchnorm')

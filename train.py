@@ -23,17 +23,8 @@ set_seed(params.seed)
 import config.configs as configs
 import models.backbone as backbone
 
-if params.run_type == 0:
-    from data.datamgr import SimpleDataManager, SetDataManager
-    from methods.protonet import ProtoNet
-elif params.run_type == 1:
-    from data.datamgr_2loss import SimpleDataManager, SetDataManager
-    from methods.protonet_2loss import ProtoNet
-elif params.run_type == 2:
-    from data.datamgr_unlabel import SimpleDataManager, SetDataManager
-    from methods.protonet_unlabel import ProtoNet
-else:
-    raise Exception("Unknown run_type")
+from data.datamgr_2loss import SimpleDataManager, SetDataManager
+from methods.protonet_2loss import ProtoNet
     
 from utils.io_utils import model_dict, get_resume_file, get_best_file, get_assigned_file
 import json
@@ -51,7 +42,7 @@ try:
 except ImportError:
     print("AMP is not installed. If --amp is True, code will fail.")    
 
-def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params):    
+def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None):    
     
     if params.amp:
         print("-----------Using mixed precision-----------") 
@@ -71,7 +62,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
         start_time = time.time()
         
         model.train()
-        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp) #model are called by reference, no need to return 
+        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp, base_loader_u=base_loader_u) #model are called by reference, no need to return 
         
         end_time = time.time()
         
@@ -138,9 +129,6 @@ if __name__=='__main__':
         params.tracking = False
     else:
         raise Exception("Unrecognized BN Type: ", print(params.bn_type), " of type ", type(params.bn_type))
-
-    print(params.no_bn)
-    print(params.tracking)
 
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
@@ -235,6 +223,14 @@ if __name__=='__main__':
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(params.n_query * params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
         print('n_query:',n_query)
+
+        base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=False)
+        if params.dataset_unlabel is not None:
+            base_file_unlabel = os.path.join('filelists', params.dataset_unlabel, 'base.json')
+            print("base file for unlabeled dataset is:", base_file_unlabel)
+            base_loader_u     = base_datamgr_u.get_data_loader( base_file_unlabel , aug = params.train_aug )
+        else:
+            base_loader_u     = None
  
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
@@ -394,7 +390,7 @@ if __name__=='__main__':
         wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
         wandb.watch(model)    
     
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params)
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u)
 
 
     ##### save_features (except maml) and test, added by me #####
