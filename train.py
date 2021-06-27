@@ -290,7 +290,7 @@ if __name__=='__main__':
     
     if params.dataset_unlabel is not None:
         params.checkpoint_dir += params.dataset_unlabel
-        params.checkpoint_dir += str(params.bs)
+        # params.checkpoint_dir += str(params.bs)
 
     ## Track bn stats
     if params.tracking:
@@ -304,6 +304,10 @@ if __name__=='__main__':
     if params.grey:
         params.checkpoint_dir += '_grey'
 
+    ## Use low_res image
+    if params.low_res:
+        params.checkpoint_dir += '_low_res'
+
     if params.jigsaw and params.rotation:
         params.checkpoint_dir += '_jigsaw_lbda%.2f_rotation_lbda%.2f'%(params.lbda_jigsaw, params.lbda_rotation)
     ## Add jigsaw
@@ -312,6 +316,9 @@ if __name__=='__main__':
     ## Add rotation
     elif params.rotation:
         params.checkpoint_dir += '_rotation_lbda%.2f'%(params.lbda)
+
+    if params.semi_sup:
+        params.checkpoint_dir += '_semi_sup%.2f'%(params.lbda)
 
     params.checkpoint_dir += params.optimization
 
