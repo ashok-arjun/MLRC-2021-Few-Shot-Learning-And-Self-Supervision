@@ -199,9 +199,9 @@ class ProtoNet(MetaTemplate):
         acc_all_rotation = []
         
         if base_loader_u:
-            loader = zip(train_loader, cycle(base_loader_u))
+            loader = zip(test_loader, cycle(base_loader_u))
         else:
-            loader = train_loader
+            loader = test_loader
 
         iter_num = len(loader) 
         i = 0

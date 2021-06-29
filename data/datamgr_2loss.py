@@ -55,13 +55,15 @@ class DataManager:
 
 
 class SimpleDataManager(DataManager):
-    def __init__(self, image_size, batch_size, jigsaw=False, rotation=False, isAircraft=False, grey=False, return_name=False, drop_last=False, shuffle=True):
+    def __init__(self, image_size, batch_size, jigsaw=False, rotation=False, isAircraft=False, grey=False, return_name=False, drop_last=False, shuffle=True, low_res=False):
         super(SimpleDataManager, self).__init__()
         self.batch_size = batch_size
         if grey:
             self.trans_loader = TransformLoader(image_size, normalize_param = dict(mean= [0.449, 0.449, 0.449] , std=[0.226, 0.226, 0.226]))
         else:
             self.trans_loader = TransformLoader(image_size)
+
+        self.image_size = image_size
 
         self.jigsaw = jigsaw
         self.rotation = rotation
@@ -70,6 +72,7 @@ class SimpleDataManager(DataManager):
         self.return_name = return_name
         self.drop_last = drop_last
         self.shuffle = shuffle
+        self.low_res = low_res
 
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
         transform = self.trans_loader.get_composed_transform(aug)
@@ -110,7 +113,7 @@ class SimpleDataManager(DataManager):
 
         dataset = SimpleDataset(data_file, transform, jigsaw=self.jigsaw, \
                     transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
-                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, return_name=self.return_name)
+                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, return_name=self.return_name, low_res=self.low_res, image_size=self.image_size)
         data_loader_params = dict(batch_size = self.batch_size, shuffle = self.shuffle, num_workers = NUM_WORKERS, pin_memory = True, drop_last=self.drop_last)       
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 

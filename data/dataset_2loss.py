@@ -67,7 +67,7 @@ def retrive_permutations(classes):
 class SimpleDataset:
     def __init__(self, data_file, transform, target_transform=identity, \
                 jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, \
-                rotation=False, isAircraft=False, grey=False, return_name=False):
+                rotation=False, isAircraft=False, grey=False, return_name=False, low_res=False, image_size=None):
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
         self.transform = transform
@@ -82,6 +82,15 @@ class SimpleDataset:
         self.isAircraft = False#isAircraft
         self.grey = grey
         self.return_name = return_name
+        self.low_res = low_res
+
+        if self.low_res:
+            self.low_res_transform = transforms.Compose(
+                                                        [
+                                                            transforms.Resize((image_size//4, image_size//4)),
+                                                            transforms.Resize((image_size, image_size))
+                                                        ]
+                                                    )
 
     def __getitem__(self,i):
         # import ipdb; ipdb.set_trace()
@@ -98,6 +107,9 @@ class SimpleDataset:
         else:
             img = Image.open(image_path).convert('RGB')
         
+        if self.low_res:
+            img = self.low_res_transform(img)
+
         if self.isAircraft:
             ## crop the banner
             img = img.crop((0,0,img.size[0],img.size[1]-20))
@@ -112,7 +124,7 @@ class SimpleDataset:
                     self.transform(img.rotate(270,expand=True))
                 ]
             rotation_labels = torch.LongTensor([0, 1, 2, 3])
-        
+
         img = self.transform(img)
         target = self.target_transform(self.meta['image_labels'][i])
 
@@ -198,10 +210,10 @@ class SubDataset:
             self.transform_jigsaw = transform_jigsaw
             self.transform_patch_jigsaw = transform_patch_jigsaw
 
-        if low_res:
+        if self.low_res:
             self.low_res_transform = transforms.Compose(
                                                         [
-                                                            transforms.Resize((image_size/4, image_size/4)),
+                                                            transforms.Resize((image_size//4, image_size//4)),
                                                             transforms.Resize((image_size, image_size))
                                                         ]
                                                     )
@@ -219,6 +231,9 @@ class SubDataset:
         else:
             img = Image.open(image_path).convert('RGB')
 
+        if self.low_res:
+            img = self.low_res_transform(img)
+
         if self.isAircraft:
             ## crop the banner
             img = img.crop((0,0,img.size[0],img.size[1]-20))
@@ -234,8 +249,6 @@ class SubDataset:
                 ]
             rotation_labels = torch.LongTensor([0, 1, 2, 3])
 
-        if self.low_res:
-            img = self.low_res_transform(img)
         img = self.transform(img)
         target = self.target_transform(self.cl)        
 

@@ -438,7 +438,7 @@ if __name__=='__main__':
             model.feature.load_state_dict(tmp['state'])
         print('modelfile:',modelfile)
 
-        datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey)
+        datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
         loadfile = configs.data_dir[params.dataset] + split + '.json'
         novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
         if params.adaptation:
@@ -458,7 +458,7 @@ if __name__=='__main__':
         else:
             outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
 
-        datamgr         = SimpleDataManager(image_size, batch_size = params.test_bs, isAircraft=isAircraft, grey=params.grey)
+        datamgr         = SimpleDataManager(image_size, batch_size = params.test_bs, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
         if '_' in params.dataset:
             loadfile = configs.data_dir[params.dataset.split('_')[0]] + split + '.json'
         else:
