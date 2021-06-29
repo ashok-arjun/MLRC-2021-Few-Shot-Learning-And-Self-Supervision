@@ -111,9 +111,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
 
     pbar.close()
             
-if __name__=='__main__':
-    np.random.seed(10)    
-    
+if __name__=='__main__':    
     torch.cuda.set_device(int(params.device[0])) 
 
     isAircraft = (params.dataset == 'aircrafts')
@@ -308,6 +306,7 @@ if __name__=='__main__':
     if params.low_res:
         params.checkpoint_dir += '_low_res'
 
+    ## Add jigsaw and rotation
     if params.jigsaw and params.rotation:
         params.checkpoint_dir += '_jigsaw_lbda%.2f_rotation_lbda%.2f'%(params.lbda_jigsaw, params.lbda_rotation)
     ## Add jigsaw

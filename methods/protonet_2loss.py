@@ -321,7 +321,7 @@ class ProtoNet(MetaTemplate):
         scores = -dists
         return scores
 
-    def set_forward(self,x,is_feature = False, patches=None, patches_label=None, patches_rotation=None, patches_label_rotation=None, semi_inputs=semi_inputs):
+    def set_forward(self,x,is_feature = False, patches=None, patches_label=None, patches_rotation=None, patches_label_rotation=None, semi_inputs=None):
         z_support, z_query  = self.parse_feature(x,is_feature)
 
         z_support   = z_support.contiguous()
@@ -330,8 +330,8 @@ class ProtoNet(MetaTemplate):
 
         dists = euclidean_dist(z_query, z_proto)
 
-        if semi_inputs:
-            
+        if semi_inputs:            
+            continue
             # get cluster assignments - basic softmax over distance of the prototypes from 
             # recalculate the mean - append them to the corresponding columns in z_proto and then take a mean
             # recal the distance
