@@ -301,14 +301,37 @@ class ProtoNet(MetaTemplate):
         else:
             return float(top1_correct), len(y_query)
 
-    def set_forward_test(self,x,is_feature = False):
+    def set_forward_test(self,x,is_feature = False, semi_inputs=None):
         z_support, z_query  = self.parse_feature(x,is_feature)
 
         z_support   = z_support.contiguous()
-        z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]
+        z_proto_nway_kshot     = z_support.view(self.n_way, self.n_support, -1 )
+        z_proto = z_proto_nway_kshot.mean(1) #the shape of z is [n_data, n_dim]
         z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
 
         dists = euclidean_dist(z_query, z_proto)
+
+        if semi_inputs != None:            
+            semi_inputs = semi_inputs.cuda()
+            semi_z = self.feature(semi_inputs)
+            semi_z = semi_z.view(semi_z.shape[0], -1)
+            inner_dist = -euclidean_dist(semi_z, z_proto)
+            class_assignments = torch.argmax(F.softmax(inner_dist, dim=1), dim=1)
+
+            z_proto_refined = z_proto_nway_kshot.mean(1)
+
+            for i in range(0, self.n_way):
+                class_i_tensors = None
+                for j in range(0, semi_z.shape[0]):
+                    if class_assignments[j] == i:
+                        class_i_tensors = torch.cat([class_i_tensors, semi_z[j]]) if class_i_tensors != None else semi_z[j]
+                z_proto_refined[i] = class_i_tensors.mean(0)
+                        
+            dists = euclidean_dist(z_query, z_proto_refined)
+            # get cluster assignments - basic softmax over distance of the prototypes from 
+            # recalculate the mean - append them to the corresponding columns in z_proto and then take a mean
+            # recal the distance
+
         scores = -dists
         return scores
 

@@ -22,7 +22,7 @@ import data.feature_loader as feat_loader
 # from methods.maml import MAML
 from utils.io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
 
-def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False):
+def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False, semi_inputs=None):
     class_list = cl_data_file.keys()
 
     select_class = random.sample(class_list,n_way)
@@ -37,9 +37,9 @@ def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 
 
     model.n_query = n_query
     if adaptation:
-        scores  = model.set_forward_adaptation(z_all, is_feature = True)
+        scores  = model.set_forward_adaptation(z_all, is_feature = True, semi_inputs=semi_inputs)
     else:
-        scores  = model.set_forward_test(z_all, is_feature = True)
+        scores  = model.set_forward_test(z_all, is_feature = True, semi_inputs=semi_inputs)
     pred = scores.data.cpu().numpy().argmax(axis = 1)
     y = np.repeat(range( n_way ), n_query )
     acc = np.mean(pred == y)*100
