@@ -103,15 +103,9 @@ class ProtoNet(MetaTemplate):
             loader = train_loader
 
         iter_num = 0 
-        max_iter = len(loader)
 
-        while iter_num < max_iter:
-            iter_num += 1
-            try:
-                inputs = iter_loader.next()
-            except:
-                iter_loader = data_prefetcher(loader)
-                inputs = iter_loader.next()
+        for iter_num, inputs in enumerate(loader):
+        
             self.global_count += 1
             x = inputs[0] if not base_loader_u else inputs[0][0]
             # import ipdb; ipdb.set_trace()
@@ -122,6 +116,7 @@ class ProtoNet(MetaTemplate):
             optimizer.zero_grad()
             # import ipdb; ipdb.set_trace()
             if base_loader_u:
+                print("base_loader_u is there")
                 if semi_sup and self_sup_origin == "unlabel":
                     aux_inputs = inputs[1]
                     semi_inputs = inputs[1][0]
@@ -133,6 +128,8 @@ class ProtoNet(MetaTemplate):
                 elif not semi_sup and self_sup_origin == "own":
                     aux_inputs = inputs[0]
             else:
+                print("base_loader_u is not there")
+
                 aux_inputs = inputs
                 semi_inputs = None
             if self.jigsaw and self.rotation:
@@ -203,16 +200,10 @@ class ProtoNet(MetaTemplate):
         else:
             loader = test_loader
 
-        iter_num = len(loader) 
         i = 0
 
-        while i < iter_num:
-            i += 1 
-            try:
-                inputs = iter_loader.next()
-            except:
-                iter_loader = data_prefetcher(loader)
-                inputs = iter_loader.next()
+        for i, inputs in enumerate(loader):
+
             x = inputs[0] if not base_loader_u else inputs[0][0]
             self.n_query = x.size(1) - self.n_support
             if self.change_way:
@@ -325,13 +316,29 @@ class ProtoNet(MetaTemplate):
         z_support, z_query  = self.parse_feature(x,is_feature)
 
         z_support   = z_support.contiguous()
-        z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]
+        z_proto_nway_kshot     = z_support.view(self.n_way, self.n_support, -1 )
+        z_proto = z_proto_nway_kshot.mean(1) #the shape of z is [n_data, n_dim]
         z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
 
         dists = euclidean_dist(z_query, z_proto)
 
-        if semi_inputs:            
-            pass
+        if semi_inputs != None:            
+            semi_inputs = semi_inputs.cuda()
+            semi_z = self.feature(semi_inputs)
+            semi_z = semi_z.view(semi_z.shape[0], -1)
+            inner_dist = -euclidean_dist(semi_z, z_proto)
+            class_assignments = torch.argmax(F.softmax(inner_dist, dim=1), dim=1)
+
+            z_proto_refined = z_proto_nway_kshot.mean(1)
+
+            for i in range(0, self.n_way):
+                class_i_tensors = None
+                for j in range(0, semi_z.shape[0]):
+                    if class_assignments[j] == i:
+                        class_i_tensors = torch.cat([class_i_tensors, semi_z[j]]) if class_i_tensors != None else semi_z[j]
+                z_proto_refined[i] = class_i_tensors.mean(0)
+                        
+            dists = euclidean_dist(z_query, z_proto_refined)
             # get cluster assignments - basic softmax over distance of the prototypes from 
             # recalculate the mean - append them to the corresponding columns in z_proto and then take a mean
             # recal the distance

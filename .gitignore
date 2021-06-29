@@ -164,3 +164,4 @@ CUB/*
 .ipynb_checkpoints/*
 filelists/dogs/Images
 install.sh
+.vscode

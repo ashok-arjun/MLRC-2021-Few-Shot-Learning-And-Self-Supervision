@@ -221,12 +221,16 @@ if __name__=='__main__':
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(params.n_query * params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
         print('n_query:',n_query)
+        print("semi-sup is: ", params.semi_sup)
 
         base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
-        if params.dataset_unlabel is not None:
-            base_file_unlabel = os.path.join('filelists', params.dataset_unlabel, 'base.json')
-            print("base file for unlabeled dataset is:", base_file_unlabel)
-            base_loader_u     = base_datamgr_u.get_data_loader( base_file_unlabel , aug = params.train_aug )
+        if params.dataset_unlabel is not None or params.semi_sup:
+            if params.dataset_unlabel:
+                base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
+                print("base file for unlabeled dataset is:", base_file_unlabel)
+            else:
+                base_file_u = base_file
+            base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
         else:
             base_loader_u     = None
  
@@ -389,6 +393,8 @@ if __name__=='__main__':
         print('Load model from:',params.loadfile)
         model.load_state_dict(pretrained_dict, strict=False)
 
+    print("Self-sup origin: ", "unlabel" if params.dataset_unlabel else "own")
+
     if not params.resume:
 
         json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))        
@@ -396,7 +402,8 @@ if __name__=='__main__':
         wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
         wandb.watch(model)    
     
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, semi_sup=params.semi_sup, self_sup_origin="unlabel" if params.dataset_unlabel else "none")
+   
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, semi_sup=params.semi_sup, self_sup_origin="unlabel" if params.dataset_unlabel else "own")
 
 
     ##### save_features (except maml) and test, added by me #####
