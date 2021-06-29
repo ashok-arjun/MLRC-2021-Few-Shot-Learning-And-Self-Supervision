@@ -331,7 +331,7 @@ class ProtoNet(MetaTemplate):
         dists = euclidean_dist(z_query, z_proto)
 
         if semi_inputs:            
-            continue
+            pass
             # get cluster assignments - basic softmax over distance of the prototypes from 
             # recalculate the mean - append them to the corresponding columns in z_proto and then take a mean
             # recal the distance

@@ -234,7 +234,7 @@ class SubDataset:
                 ]
             rotation_labels = torch.LongTensor([0, 1, 2, 3])
 
-        if low_res:
+        if self.low_res:
             img = self.low_res_transform(img)
         img = self.transform(img)
         target = self.target_transform(self.cl)        

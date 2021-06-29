@@ -232,13 +232,13 @@ if __name__=='__main__':
  
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
-                                        jigsaw=params.jigsaw, lbda=params.lbda,  rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation, low_res=params.low_res) 
-        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey)
+                                        jigsaw=params.jigsaw, lbda=params.lbda,  rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
+        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
-                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation, low_res=params.low_res) 
-        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey)
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 
