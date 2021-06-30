@@ -42,7 +42,7 @@ try:
 except ImportError:
     print("AMP is not installed. If --amp is True, code will fail.")    
 
-def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None, semi_sup=False, self_sup_origin="own"):    
+def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None, val_loader_u=None, semi_sup=False, self_sup_origin="own"):    
     
     if params.amp:
         print("-----------Using mixed precision-----------") 
@@ -80,23 +80,23 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
                 os.makedirs(params.checkpoint_dir)
 
             if params.jigsaw and params.rotation:
-                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
 
             elif params.jigsaw:
-                acc, acc_jigsaw = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc, acc_jigsaw = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
 
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
 
             elif params.rotation:
-                acc, acc_rotation = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
             else:    
-                acc = model.test_loop( val_loader, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
                 wandb.log({'val/acc': acc}, step=model.global_count)
             if acc > max_acc : 
                 max_acc = acc
@@ -227,12 +227,19 @@ if __name__=='__main__':
         if params.dataset_unlabel is not None or params.semi_sup:
             if params.dataset_unlabel:
                 base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
-                print("base file for unlabeled dataset is:", base_file_unlabel)
+                print("base file for unlabeled dataset is:", base_file_u)
+
+                val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
+                print("val file for unlabeled dataset is:", val_file_u)
             else:
                 base_file_u = base_file
+                val_file_u = val_file
             base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
+            val_loader_u     = base_datamgr_u.get_data_loader( val_file_u , aug = False )
+
         else:
             base_loader_u     = None
+            val_loader_u = None
  
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
@@ -403,7 +410,7 @@ if __name__=='__main__':
         wandb.watch(model)    
     
    
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, semi_sup=params.semi_sup, self_sup_origin="unlabel" if params.dataset_unlabel else "own")
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, val_loader_u=val_loader_u, semi_sup=params.semi_sup, self_sup_origin="unlabel" if params.dataset_unlabel else "own")
 
 
     ##### save_features (except maml) and test, added by me #####
