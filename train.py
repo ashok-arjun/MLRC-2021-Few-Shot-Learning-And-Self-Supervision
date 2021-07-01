@@ -163,9 +163,12 @@ if __name__=='__main__':
         if params.json_seed is not None:
             base_file = configs.data_dir[params.dataset] + 'base' + params.json_seed + '.json' 
             val_file   = configs.data_dir[params.dataset] + 'val' + params.json_seed + '.json' 
+            test_file   = configs.data_dir[params.dataset] + 'novel' + params.json_seed + '.json' 
+
         else:
             base_file = configs.data_dir[params.dataset] + 'base.json' 
             val_file   = configs.data_dir[params.dataset] + 'val.json' 
+            test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
@@ -243,11 +246,16 @@ if __name__=='__main__':
         base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
+        val_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
+                                        jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 100, **val_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
+        val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
+        #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor     
+
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
-        val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
-        #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
+        test_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
+        test_loader              = test_datamgr.get_data_loader( test_file, aug = False)    
 
         if params.method == 'protonet':
             model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain, tracking=params.tracking)
@@ -454,23 +462,6 @@ if __name__=='__main__':
         acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
         print(acc_mean, acc_std)
     else:
-        
-        if params.method == 'baseline':
-            model           = BaselineFinetune( model_dict[params.model], **few_shot_params )
-        elif params.method == 'baseline++':
-            model           = BaselineFinetune( model_dict[params.model], loss_type = 'dist', **few_shot_params )
-
-        if params.save_iter != -1:
-            outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5")
-        else:
-            outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
-
-        datamgr         = SimpleDataManager(image_size, batch_size = params.test_bs, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
-        if '_' in params.dataset:
-            loadfile = configs.data_dir[params.dataset.split('_')[0]] + split + '.json'
-        else:
-            loadfile = configs.data_dir[params.dataset] + split + '.json'
-        data_loader      = datamgr.get_data_loader(loadfile, aug = False)
 
         tmp = torch.load(modelfile)
         state = tmp['state']
@@ -482,9 +473,6 @@ if __name__=='__main__':
             else:
                 state.pop(key)
 
-
-        # import ipdb; ipdb.set_trace()
-        # if params.method != 'baseline':
         model.feature.load_state_dict(state)
         model.feature.eval()
         model = model.cuda()
@@ -493,32 +481,9 @@ if __name__=='__main__':
         #     model.load_state_dict(state)
         model.eval()
 
-        dirname = os.path.dirname(outfile)
-        if not os.path.isdir(dirname):
-            os.makedirs(dirname)
-        # import ipdb; ipdb.set_trace()
-        # outfile += '_finetune'
-        print('save outfile at:', outfile)
-        from save_features import save_features
-        save_features(model, data_loader, outfile)
+        acc_mean, acc_std = model.test_loop( test_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, proto_only=True)        
 
-        ### from test.py ###
-        from test import feature_evaluation
-        novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
-        print('load novel file from:',novel_file)
-        import data.feature_loader as feat_loader
-        cl_data_file = feat_loader.init_loader(novel_file)
-        
-        for i in range(0, iter_num):
-            acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
-            acc_all.append(acc)
-
-        acc_all  = np.asarray(acc_all)
-        acc_mean = np.mean(acc_all)
-        acc_std  = np.std(acc_all)
-        print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
-
-        wandb.log({"test/acc": np.mean(acc_all), "episodes": iter_num})
+        wandb.log({"test/acc": np.mean(acc)})
 
         with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
             timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
@@ -530,6 +495,48 @@ if __name__=='__main__':
                 exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
             acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
             f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
+
+
+        ### LEGACY CODE ###
+
+
+        # dirname = os.path.dirname(outfile)
+        # if not os.path.isdir(dirname):
+        #     os.makedirs(dirname)
+        # # import ipdb; ipdb.set_trace()
+        # # outfile += '_finetune'
+        # print('save outfile at:', outfile)
+        # from save_features import save_features
+        # save_features(model, data_loader, outfile)
+
+        # ### from test.py ###
+        # from test import feature_evaluation
+        # novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
+        # print('load novel file from:',novel_file)
+        # import data.feature_loader as feat_loader
+        # cl_data_file = feat_loader.init_loader(novel_file)
+        
+        # for i in range(0, iter_num):
+        #     acc = feature_evaluation(cl_data_file, model, n_query = 16, adaptation = params.adaptation, **few_shot_params)
+        #     acc_all.append(acc)
+
+        # acc_all  = np.asarray(acc_all)
+        # acc_mean = np.mean(acc_all)
+        # acc_std  = np.std(acc_all)
+        # print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+
+        # wandb.log({"test/acc": np.mean(acc_all), "episodes": iter_num})
+
+        # with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
+        #     timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+        #     aug_str = '-aug' if params.train_aug else ''
+        #     aug_str += '-adapted' if params.adaptation else ''
+        #     if params.method in ['baseline', 'baseline++'] :
+        #         exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
+        #     else:
+        #         exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
+        #     acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+        #     f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
 
         
