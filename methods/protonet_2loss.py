@@ -284,7 +284,7 @@ class ProtoNet(MetaTemplate):
         	scores, x_, y_, x_rotation, y_rotation = self.set_forward(x,patches=patches,patches_label=patches_label,patches_rotation=patches_rotation, patches_label_rotation=patches_label_rotation, semi_inputs=semi_inputs)
         elif self.jigsaw and patches != None:
             scores, x_, y_ = self.set_forward(x,patches=patches,patches_label=patches_label, semi_inputs=semi_inputs)
-        elif self.rotation and patches_rotation != None:
+        elif self.rotation and patches != None:
             scores, x_, y_ = self.set_forward(x,patches=patches,patches_label=patches_label, semi_inputs=semi_inputs)
         else:
             scores = self.set_forward(x, semi_inputs=semi_inputs)
@@ -304,7 +304,7 @@ class ProtoNet(MetaTemplate):
             pred = torch.max(x_,1)
             top1_correct_jigsaw = torch.sum(pred[1] == y_)
             return float(top1_correct), float(top1_correct_jigsaw), len(y_query), len(y_)
-        elif self.rotation and patches_rotation != None:
+        elif self.rotation and patches != None:
             pred = torch.max(x_,1)
             top1_correct_rotation = torch.sum(pred[1] == y_)
             return float(top1_correct), float(top1_correct_rotation), len(y_query), len(y_)
@@ -465,7 +465,7 @@ class ProtoNet(MetaTemplate):
             # y_ = Variable(y_.cuda())
 
             return scores, x_, y_
-        elif self.rotation and patches_rotation != None:
+        elif self.rotation and patches != None:
             # import ipdb; ipdb.set_trace()
             Way,S,T,C,H,W = patches.size()#torch.Size([5, 21, 4, 3, 224, 224])
             B = Way*S
@@ -485,17 +485,17 @@ class ProtoNet(MetaTemplate):
     def set_forward_loss(self, x, patches=None, patches_label=None, patches_rotation=None, patches_label_rotation=None, semi_inputs=None):
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
         
-        if self.jigsaw and self.rotation:
+        if self.jigsaw and self.rotation and patches != None and patches_rotation != None:
             scores, x_, y_, x_rotation_, y_rotation_ = self.set_forward(x,patches=patches,patches_label=patches_label,patches_rotation=patches_rotation,patches_label_rotation=patches_label_rotation, semi_inputs=semi_inputs)
             pred = torch.max(x_,1)
             acc_jigsaw = torch.sum(pred[1] == y_).cpu().numpy()*1.0/len(y_)
             pred_rotation = torch.max(x_rotation_,1)
             acc_rotation = torch.sum(pred_rotation[1] == y_rotation_).cpu().numpy()*1.0/len(y_rotation_)
-        elif self.jigsaw:
+        elif self.jigsaw and patches != None:
             scores, x_, y_ = self.set_forward(x,patches=patches,patches_label=patches_label, semi_inputs=semi_inputs)
             pred = torch.max(x_,1)
             acc_jigsaw = torch.sum(pred[1] == y_).cpu().numpy()*1.0/len(y_)
-        elif self.rotation:
+        elif self.rotation and patches != None:
             scores, x_, y_ = self.set_forward(x,patches=patches,patches_label=patches_label, semi_inputs=semi_inputs)
             pred = torch.max(x_,1)
             acc_rotation = torch.sum(pred[1] == y_).cpu().numpy()*1.0/len(y_)
