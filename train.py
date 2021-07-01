@@ -42,7 +42,7 @@ try:
 except ImportError:
     print("AMP is not installed. If --amp is True, code will fail.")    
 
-def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None, val_loader_u=None, semi_sup=False):    
+def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u, val_loader_u, semi_sup):    
     
     if params.amp:
         print("-----------Using mixed precision-----------") 
@@ -261,6 +261,9 @@ if __name__=='__main__':
     if params.semi_sup:
         params.checkpoint_dir += '_semi_sup%.2f'%(params.lbda)
 
+    if params.dataset_unlabel:
+        params.checkpoint_dir += '_dataset_unlabel=%s'%(params.dataset_unlabel)
+
     params.checkpoint_dir += params.optimization
 
     params.checkpoint_dir += '_lr%.4f'%(params.lr)
@@ -315,7 +318,7 @@ if __name__=='__main__':
         wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
         wandb.watch(model)        
    
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, val_loader_u=val_loader_u, semi_sup=params.semi_sup)
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u, val_loader_u, params.semi_sup)
 
 
     ##### save_features (except maml) and test, added by me #####
@@ -378,11 +381,9 @@ if __name__=='__main__':
         model.feature.eval()
         model = model.cuda()
         model.feature = model.feature.cuda()
-        # else:
-        #     model.load_state_dict(state)
         model.eval()
 
-        acc_mean, acc_std = model.test_loop( test_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, proto_only=True)        
+        acc_mean, acc_std = model.test_loop( test_loader, semi_sup=semi_sup, proto_only=True)        
 
         wandb.log({"test/acc": np.mean(acc)})
 

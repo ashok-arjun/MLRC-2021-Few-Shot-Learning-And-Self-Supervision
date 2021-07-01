@@ -162,11 +162,7 @@ class SetDataset:
         self.grey = grey
         self.low_res = low_res
         self.semi_sup = semi_sup
-
-        if semi_sup:
-            # split dataset into 40 - 60
-            pass
-
+        
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
  

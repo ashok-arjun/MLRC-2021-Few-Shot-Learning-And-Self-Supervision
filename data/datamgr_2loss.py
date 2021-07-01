@@ -129,7 +129,7 @@ class SimpleDataManager(DataManager):
 
 class SetDataManager(DataManager):
     def __init__(self, image_size, n_way, n_support, n_query, n_eposide =100, \
-                jigsaw=False, lbda=0.0, lbda_proto=0.0, rotation=False, isAircraft=False, grey=False, lbda_jigsaw=0.0, lbda_rotation=0.0, low_res=False, semi_sup=None):        
+                jigsaw=False, lbda=0.0, lbda_proto=0.0, rotation=False, isAircraft=False, grey=False, lbda_jigsaw=0.0, lbda_rotation=0.0, low_res=False, semi_sup=False):        
         super(SetDataManager, self).__init__()
         self.image_size = image_size
         self.n_way = n_way

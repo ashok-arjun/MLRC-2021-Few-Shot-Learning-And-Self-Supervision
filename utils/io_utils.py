@@ -103,9 +103,6 @@ def parse_args(script):
 
         parser.add_argument('--eval_interval', type=int, default=50, help='eval_interval') 
         parser.add_argument('--run_name', default=None, help="wandb run name")
-
-        ## Semi-supervised learning - incorporates jigsaw and/or rotation into the class prototypes also - NOTE: only when training
-
         parser.add_argument('--semi_sup', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
 
     
