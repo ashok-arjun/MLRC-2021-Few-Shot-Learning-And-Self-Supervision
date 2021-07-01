@@ -216,8 +216,12 @@ class ProtoNet(MetaTemplate):
 
             if self.change_way:
                 self.n_way  = x.size(0)
+                
             if base_loader_u:
                 aux_inputs = inputs[1]
+                aux_inputs[2] = aux_inputs[2].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[2].size()[2:])
+                if len(aux_inputs) > 4:
+                    aux_inputs[4] = aux_inputs[4].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[4].size()[2:])
             else:
                 aux_inputs = inputs
 
@@ -276,11 +280,11 @@ class ProtoNet(MetaTemplate):
         else:
             return acc_mean, acc_std
     def correct(self, x, patches=None, patches_label=None, patches_rotation=None, patches_label_rotation=None, semi_inputs=None):       
-        if self.jigsaw and self.rotation:
+        if self.jigsaw and self.rotation and patches != None and patches_rotation != None:
         	scores, x_, y_, x_rotation, y_rotation = self.set_forward(x,patches=patches,patches_label=patches_label,patches_rotation=patches_rotation, patches_label_rotation=patches_label_rotation, semi_inputs=semi_inputs)
-        elif self.jigsaw:
+        elif self.jigsaw and patches != None:
             scores, x_, y_ = self.set_forward(x,patches=patches,patches_label=patches_label, semi_inputs=semi_inputs)
-        elif self.rotation:
+        elif self.rotation and patches_rotation != None:
             scores, x_, y_ = self.set_forward(x,patches=patches,patches_label=patches_label, semi_inputs=semi_inputs)
         else:
             scores = self.set_forward(x, semi_inputs=semi_inputs)
@@ -290,17 +294,17 @@ class ProtoNet(MetaTemplate):
         topk_ind = topk_labels.cpu().numpy()
         top1_correct = np.sum(topk_ind[:,0] == y_query)
 
-        if self.jigsaw and self.rotation:
+        if self.jigsaw and self.rotation and patches != None and patches_rotation != None:
             pred = torch.max(x_,1)
             top1_correct_jigsaw = torch.sum(pred[1] == y_)
             pred_rotation = torch.max(x_rotation,1)
             top1_correct_rotation = torch.sum(pred_rotation[1] == y_rotation)
             return float(top1_correct), float(top1_correct_jigsaw), float(top1_correct_rotation), len(y_query), len(y_), len(y_rotation)
-        elif self.jigsaw:
+        elif self.jigsaw and patches != None:
             pred = torch.max(x_,1)
             top1_correct_jigsaw = torch.sum(pred[1] == y_)
             return float(top1_correct), float(top1_correct_jigsaw), len(y_query), len(y_)
-        elif self.rotation:
+        elif self.rotation and patches_rotation != None:
             pred = torch.max(x_,1)
             top1_correct_rotation = torch.sum(pred[1] == y_)
             return float(top1_correct), float(top1_correct_rotation), len(y_query), len(y_)
@@ -372,8 +376,8 @@ class ProtoNet(MetaTemplate):
             dists = euclidean_dist(z_query, z_proto_refined)
 
         scores = -dists
-
-        if self.jigsaw and self.rotation:
+        
+        if self.jigsaw and self.rotation and patches != None and patches_rotation != None:
             # import ipdb; ipdb.set_trace()
             # patches = patches[:,:self.n_support,...]
             # patches = patches[:,:,...]#S is shot+query
@@ -424,7 +428,7 @@ class ProtoNet(MetaTemplate):
             y_rotation_ = patches_label_rotation.view(-1).cuda()
 
             return scores, x_, y_, x_rotation_, y_rotation_
-        elif self.jigsaw:
+        elif self.jigsaw and patches != None:
             # import ipdb; ipdb.set_trace()
             # patches = patches[:,:self.n_support,...]
             # patches = patches[:,:,...]#S is shot+query
@@ -461,7 +465,7 @@ class ProtoNet(MetaTemplate):
             # y_ = Variable(y_.cuda())
 
             return scores, x_, y_
-        elif self.rotation:
+        elif self.rotation and patches_rotation != None:
             # import ipdb; ipdb.set_trace()
             Way,S,T,C,H,W = patches.size()#torch.Size([5, 21, 4, 3, 224, 224])
             B = Way*S
