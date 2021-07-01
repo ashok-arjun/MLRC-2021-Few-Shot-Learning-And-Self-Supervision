@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 import os
 identity = lambda x:x
 import math
+from random import choices
 
 def get_patches(img, transform_jigsaw, transform_patch_jigsaw, permutations):
     if np.random.rand() < 0.30:
@@ -152,7 +153,7 @@ class SimpleDataset:
 
 class SetDataset:
     def __init__(self, data_file, batch_size, transform, jigsaw=False, \
-                transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None):
+                transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None, semi_sup=False):
         self.jigsaw = jigsaw
         self.transform_jigsaw = transform_jigsaw
         self.transform_patch_jigsaw = transform_patch_jigsaw
@@ -160,6 +161,11 @@ class SetDataset:
         self.isAircraft = isAircraft
         self.grey = grey
         self.low_res = low_res
+        self.semi_sup = semi_sup
+
+        if semi_sup:
+            # split dataset into 40 - 60
+            pass
 
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
@@ -172,6 +178,14 @@ class SetDataset:
 
         for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
             self.sub_meta[y].append(x)
+        
+        if semi_sup:
+            self.sub_meta_semi_sup = {}
+            for y in self.cl_list:
+                semi_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), 0.5 * len(self.sub_meta[y]))
+                self.sub_meta_semi_sup[y].extend([self.sub_meta[y][x] for x in semi_sup_indices])
+                for idx in semi_sup_indices:
+                    self.sub_meta[y].pop(idx)
 
         self.sub_dataloader = [] 
         sub_data_loader_params = dict(batch_size = batch_size,
@@ -181,7 +195,7 @@ class SetDataset:
         for cl in self.cl_list:
             sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform, jigsaw=self.jigsaw, \
                                     transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
-                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size)
+                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size, sub_meta_semi_sup=self.sub_meta_semi_sup[cl])
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
     def __getitem__(self,i):
@@ -192,7 +206,7 @@ class SetDataset:
 
 class SubDataset:
     def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity, \
-                jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None):
+                jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None, sub_meta_semi_sup=None):
         self.sub_meta = sub_meta
         self.cl = cl 
         self.transform = transform
@@ -217,6 +231,8 @@ class SubDataset:
                                                             transforms.Resize((image_size, image_size))
                                                         ]
                                                     )
+
+        self.sub_meta_semi_sup = sub_meta_semi_sup
 
     def __getitem__(self,i):
         image_path = os.path.join(self.sub_meta[i])
@@ -253,16 +269,42 @@ class SubDataset:
         target = self.target_transform(self.cl)        
 
     
+        if self.sub_meta_semi_sup:
+            semi_sup_img_path = os.path.join(self.sub_meta_semi_sup[choices(self.sub_meta_semi_sup, 1)[0]])
 
+            if self.grey:
+                semi_sup_img = Image.open(semi_sup_img_path).convert('L').convert('RGB')
+            else:
+                semi_sup_img = Image.open(semi_sup_img_path).convert('RGB')
 
-        if self.jigsaw and self.rotation:
-            return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels
-        elif self.jigsaw:
-            return img, target, patches, order
-        elif self.rotation:
-            return img, target, torch.stack(rotated_imgs, dim=0), rotation_labels
+            if self.low_res:
+                semi_sup_img = self.low_res_transform(semi_sup_img)
+
+            if self.isAircraft:
+                ## crop the banner
+                semi_sup_img = semi_sup_img.crop((0,0,semi_sup_img.size[0],semi_sup_img.size[1]-20))
+            
+            semi_sup_img = self.transform(semi_sup_img)
+
+            if self.jigsaw and self.rotation:
+                return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels, semi_sup_img
+            elif self.jigsaw:
+                return img, target, patches, order, semi_sup_img
+            elif self.rotation:
+                return img, target, torch.stack(rotated_imgs, dim=0), rotation_labels, semi_sup_img
+            else:
+                return img, target, semi_sup_img
+
         else:
-            return img, target
+
+            if self.jigsaw and self.rotation:
+                return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels
+            elif self.jigsaw:
+                return img, target, patches, order
+            elif self.rotation:
+                return img, target, torch.stack(rotated_imgs, dim=0), rotation_labels
+            else:
+                return img, target
 
     def __len__(self):
         return len(self.sub_meta)

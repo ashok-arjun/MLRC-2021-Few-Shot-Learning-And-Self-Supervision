@@ -42,7 +42,7 @@ try:
 except ImportError:
     print("AMP is not installed. If --amp is True, code will fail.")    
 
-def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None, val_loader_u=None, semi_sup=False, self_sup_origin="own"):    
+def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, params, base_loader_u = None, val_loader_u=None, semi_sup=False):    
     
     if params.amp:
         print("-----------Using mixed precision-----------") 
@@ -58,11 +58,11 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
     
     model.global_count = start_epoch*len(base_loader)
     
-    for epoch in range(start_epoch,stop_epoch):
+    for epoch in range(start_epoch,stop_epoch):semi_inputs
         start_time = time.time()
         
         model.train()
-        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp, base_loader_u=base_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin) 
+        avg_loss = model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp, base_loader_u=base_loader_u, semi_sup=semi_sup) 
         
         end_time = time.time()
         
@@ -80,23 +80,23 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
                 os.makedirs(params.checkpoint_dir)
 
             if params.jigsaw and params.rotation:
-                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc, acc_jigsaw, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
 
             elif params.jigsaw:
-                acc, acc_jigsaw = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc, acc_jigsaw = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
 
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
 
             elif params.rotation:
-                acc, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
             else:    
-                acc = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup, self_sup_origin=self_sup_origin)
+                acc = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
                 wandb.log({'val/acc': acc}, step=model.global_count)
             if acc > max_acc : 
                 max_acc = acc
@@ -114,7 +114,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
 if __name__=='__main__':    
     torch.cuda.set_device(int(params.device[0])) 
 
-    isAircraft = (params.dataset == 'aircrafts')
+    isAircraft = (params.dataset == 'aircrafts')semi_inputs
 
     if params.bn_type == 1:
         params.no_bn = False
@@ -144,7 +144,7 @@ if __name__=='__main__':
         base_file = configs.data_dir['aircrafts'] + 'base.json'
         val_file = configs.data_dir['aircrafts'] + 'val.json'
     elif params.dataset == 'cars_original':
-        base_file = configs.data_dir['cars'] + 'base.json'
+        base_file = configs.data_dir['cars'] + 'base.json'semi_inputs
         val_file = configs.data_dir['cars'] + 'val.json'
     elif params.dataset == 'CUB_original':
         if params.firstk > 0:
@@ -224,16 +224,12 @@ if __name__=='__main__':
         print("semi-sup is: ", params.semi_sup)
 
         base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
-        if params.dataset_unlabel is not None or params.semi_sup:
-            if params.dataset_unlabel:
-                base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
-                print("base file for unlabeled dataset is:", base_file_u)
+        if params.dataset_unlabel is not None:
+            base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
+            print("base file for unlabeled dataset is:", base_file_u)
 
-                val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
-                print("val file for unlabeled dataset is:", val_file_u)
-            else:
-                base_file_u = base_file
-                val_file_u = val_file
+            val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
+            print("val file for unlabeled dataset is:", val_file_u)
             base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
             val_loader_u     = base_datamgr_u.get_data_loader( val_file_u , aug = False )
 
@@ -244,12 +240,12 @@ if __name__=='__main__':
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda,  rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
+        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 
@@ -400,17 +396,14 @@ if __name__=='__main__':
         print('Load model from:',params.loadfile)
         model.load_state_dict(pretrained_dict, strict=False)
 
-    print("Self-sup origin: ", "unlabel" if params.dataset_unlabel else "own")
-
     if not params.resume:
 
         json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))        
         wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners")        
         wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
-        wandb.watch(model)    
-    
+        wandb.watch(model)        
    
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, val_loader_u=val_loader_u, semi_sup=params.semi_sup, self_sup_origin="unlabel" if params.dataset_unlabel else "own")
+    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u=base_loader_u, val_loader_u=val_loader_u, semi_sup=params.semi_sup)
 
 
     ##### save_features (except maml) and test, added by me #####

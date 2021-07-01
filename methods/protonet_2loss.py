@@ -91,7 +91,7 @@ class ProtoNet(MetaTemplate):
             self.classifier_rotation.add_module('fc8',nn.Linear(128, 4))
 
 
-    def train_loop(self, epoch, train_loader, optimizer, pbar=None, enable_amp=None, base_loader_u = None, semi_sup=False, self_sup_origin="own"):
+    def train_loop(self, epoch, train_loader, optimizer, pbar=None, enable_amp=None, base_loader_u = None, semi_sup=False):
         avg_loss=0
         avg_loss_proto=0
         avg_loss_jigsaw=0
@@ -115,23 +115,22 @@ class ProtoNet(MetaTemplate):
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
             # import ipdb; ipdb.set_trace()
-            if base_loader_u:
-                print("base_loader_u is there")
-                if semi_sup and self_sup_origin == "unlabel":
-                    aux_inputs = inputs[1]
-                    semi_inputs = inputs[1][0]
-                elif semi_sup and self_sup_origin == "own":
-                    aux_inputs = inputs[0]
-                    semi_inputs = inputs[1][0]
-                elif not semi_sup and self_sup_origin == "unlabel":
-                    aux_inputs = inputs[1]
-                elif not semi_sup and self_sup_origin == "own":
-                    aux_inputs = inputs[0]
-            else:
-                print("base_loader_u is not there")
 
+            if base_loader_u:
+                aux_inputs = inputs[1]
+            else:
                 aux_inputs = inputs
+
+            if semi_sup:
+                if self.jigsaw and self.rotation:
+                    semi_inputs = inputs[6]
+                elif self.jigsaw or self.rotation:
+                    semi_inputs = inputs[4]
+                else:
+                    semi_inputs = inputs[2]
+            else:
                 semi_inputs = None
+
             if self.jigsaw and self.rotation:
                 loss_proto, loss_jigsaw, loss_rotation, acc, acc_jigsaw, acc_rotation = self.set_forward_loss( x, aux_inputs[2], aux_inputs[3], aux_inputs[4], aux_inputs[5], semi_inputs=semi_inputs )# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
                 loss = (1.0-self.lbda_jigsaw-self.lbda_rotation) * loss_proto + self.lbda_jigsaw * loss_jigsaw + self.lbda_rotation * loss_rotation
