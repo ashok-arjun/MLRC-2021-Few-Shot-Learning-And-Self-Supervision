@@ -12,3 +12,4 @@ data_dir['tieredImagenet']    = './filelists/tieredImagenet/'
 data_dir['inat_aves']    = './filelists/inat_aves/'
 data_dir['inat_all']    = './filelists/inat_all/'
 data_dir['mixed']    = './filelists/mixed/'
+NUM_WORKERS = 12

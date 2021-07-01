@@ -124,6 +124,9 @@ class ProtoNet(MetaTemplate):
 
             if base_loader_u:
                 aux_inputs = inputs[1]
+                aux_inputs[2] = aux_inputs[2].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[2].size()[2:])
+                if len(aux_inputs) > 4:
+                    aux_inputs[4] = aux_inputs[4].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[4].size()[2:])
             else:
                 aux_inputs = inputs
 
@@ -190,14 +193,14 @@ class ProtoNet(MetaTemplate):
         acc_all_jigsaw = []
         acc_all_rotation = []
         
+        iter_num = len(test_loader)
+
         if base_loader_u:
             loader = zip(test_loader, cycle(base_loader_u))
         else:
             loader = test_loader
 
         i = 0
-
-        iter_num = len(loader)
 
         for i, inputs in enumerate(loader):
 
@@ -209,8 +212,8 @@ class ProtoNet(MetaTemplate):
             else:
                 semi_inputs = None
 
-
             self.n_query = x.size(1) - self.n_support
+
             if self.change_way:
                 self.n_way  = x.size(0)
             if base_loader_u:

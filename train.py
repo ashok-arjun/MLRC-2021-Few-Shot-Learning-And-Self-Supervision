@@ -134,9 +134,9 @@ if __name__=='__main__':
     val_file   = configs.data_dir[params.dataset] + 'val.json' 
     test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
-    train_iter_num = 100 # NOTE: should be `100`
-    val_iter_num = 100 # NOTE: should be `100`
-    test_iter_num = 600 # NOTE: should be `600`
+    train_iter_num = 2 # NOTE: should be `100`
+    val_iter_num = 2 # NOTE: should be `100`
+    test_iter_num = 2 # NOTE: should be `600`
 
 
     if 'Conv' in params.model:
@@ -160,7 +160,9 @@ if __name__=='__main__':
         print('n_query:',n_query)
         print("semi-sup is: ", params.semi_sup)
 
-        base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
+        base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.train_n_way * (params.n_shot + n_query), jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
+        val_datamgr_u    = SimpleDataManager(image_size, batch_size = params.test_n_way * (params.n_shot + n_query), jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
+
         if params.dataset_unlabel is not None:
             base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
             print("base file for self-supervision is:", base_file_u)
@@ -169,7 +171,7 @@ if __name__=='__main__':
             print("val file for self-supervision is:", val_file_u)
 
             base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
-            val_loader_u     = base_datamgr_u.get_data_loader( val_file_u , aug = False )
+            val_loader_u     = val_datamgr_u.get_data_loader( val_file_u , aug = False )
 
         else:
             base_loader_u     = None

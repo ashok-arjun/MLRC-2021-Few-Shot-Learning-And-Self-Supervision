@@ -8,8 +8,9 @@ import data.additional_transforms as add_transforms
 from data.dataset_2loss import SimpleDataset, SetDataset, EpisodicBatchSampler
 from abc import abstractmethod
 import random
+import config.configs as configs
 
-NUM_WORKERS=12
+NUM_WORKERS=configs.NUM_WORKERS
 
 class TransformLoader:
     def __init__(self, image_size, 
