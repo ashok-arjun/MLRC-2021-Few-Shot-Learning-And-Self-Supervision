@@ -134,9 +134,9 @@ if __name__=='__main__':
     val_file   = configs.data_dir[params.dataset] + 'val.json' 
     test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
-    train_iter_num = 20 # NOTE: change to `100`
-    val_iter_num = 10 # NOTE: change to `100`
-    test_iter_num = 5 # NOTE: change to `600`
+    train_iter_num = 100 # NOTE: should be `100`
+    val_iter_num = 100 # NOTE: should be `100`
+    test_iter_num = 600 # NOTE: should be `600`
 
 
     if 'Conv' in params.model:
@@ -390,7 +390,7 @@ if __name__=='__main__':
         model.eval()
 
         if params.semi_sup:
-            print("Performing superviesd + semi-supervised inference...")
+            print("Performing supervised + semi-supervised inference...")
         else:
             print("Performing inference...")
 
@@ -399,9 +399,10 @@ if __name__=='__main__':
         wandb.log({"test/acc": acc_mean})
 
         out_dir = os.path.join( checkpoint_dir.replace("checkpoints","results"))
+
         os.makedirs(out_dir, exist_ok=True)
 
-        with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
+        with open(os.path.join( checkpoint_dir.replace("checkpoints","results"), split_str +"_test.txt") , 'a') as f:
             timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
             aug_str = '-aug' if params.train_aug else ''
             aug_str += '-adapted' if params.adaptation else ''
