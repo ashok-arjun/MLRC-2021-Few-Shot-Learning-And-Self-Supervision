@@ -58,7 +58,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
     
     model.global_count = start_epoch*len(base_loader)
     
-    for epoch in range(start_epoch,stop_epoch):semi_inputs
+    for epoch in range(start_epoch,stop_epoch):
         start_time = time.time()
         
         model.train()
@@ -114,7 +114,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
 if __name__=='__main__':    
     torch.cuda.set_device(int(params.device[0])) 
 
-    isAircraft = (params.dataset == 'aircrafts')semi_inputs
+    isAircraft = (params.dataset == 'aircrafts')
 
     if params.bn_type == 1:
         params.no_bn = False
@@ -128,47 +128,10 @@ if __name__=='__main__':
     else:
         raise Exception("Unrecognized BN Type: ", print(params.bn_type), " of type ", type(params.bn_type))
 
-    if params.dataset == 'cross':
-        base_file = configs.data_dir['miniImagenet'] + 'all.json' 
-        val_file   = configs.data_dir['CUB'] + 'val.json' 
-    elif params.dataset == 'cross_char':
-        base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
-        val_file   = configs.data_dir['emnist'] + 'val.json' 
-    elif params.dataset == 'flowers_original':
-        base_file = configs.data_dir['flowers'] + 'base.json'
-        val_file = configs.data_dir['flowers'] + 'val.json'
-    elif params.dataset == 'dogs_original':
-        base_file = configs.data_dir['dogs'] + 'base.json'
-        val_file = configs.data_dir['dogs'] + 'val.json'
-    elif params.dataset == 'aircrafts_original':
-        base_file = configs.data_dir['aircrafts'] + 'base.json'
-        val_file = configs.data_dir['aircrafts'] + 'val.json'
-    elif params.dataset == 'cars_original':
-        base_file = configs.data_dir['cars'] + 'base.json'semi_inputs
-        val_file = configs.data_dir['cars'] + 'val.json'
-    elif params.dataset == 'CUB_original':
-        if params.firstk > 0:
-            base_file = configs.data_dir['CUB'] + 'original_split_train_first_'+str(params.firstk)+'.json'
-        else:
-            base_file = configs.data_dir['CUB'] + 'base.json'
-        val_file = configs.data_dir['CUB'] + 'val.json'
-    elif params.dataset == 'CUB_subset':
-        base_file = configs.data_dir['CUB'] + 'original_split_train_base.json'
-        val_file = configs.data_dir['CUB'] + 'original_split_train_val.json'
-    elif '_' in params.dataset:
-        base_file = configs.data_dir[params.dataset.split('_')[0]] + 'base_' + params.dataset.split('_')[1] +'.json'
-        print("base file for labeled dataset is:", base_file)
-        val_file = configs.data_dir[params.dataset.split('_')[0]] + 'val.json'
-    else:
-        if params.json_seed is not None:
-            base_file = configs.data_dir[params.dataset] + 'base' + params.json_seed + '.json' 
-            val_file   = configs.data_dir[params.dataset] + 'val' + params.json_seed + '.json' 
-            test_file   = configs.data_dir[params.dataset] + 'novel' + params.json_seed + '.json' 
 
-        else:
-            base_file = configs.data_dir[params.dataset] + 'base.json' 
-            val_file   = configs.data_dir[params.dataset] + 'val.json' 
-            test_file   = configs.data_dir[params.dataset] + 'novel.json' 
+    base_file = configs.data_dir[params.dataset] + 'base.json' 
+    val_file   = configs.data_dir[params.dataset] + 'val.json' 
+    test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
@@ -186,42 +149,7 @@ if __name__=='__main__':
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         params.model = 'Conv4S'
 
-    if params.method in ['baseline', 'baseline++'] :
-        # base_datamgr    = SimpleDataManager(image_size, batch_size = 16, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
-        base_datamgr    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
-        base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
-        # val_datamgr     = SimpleDataManager(image_size, batch_size = 64, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
-        val_datamgr     = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey)
-        val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
-        
-        # if params.dataset == 'omniglot':
-        #     assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
-        # if params.dataset == 'cross_char':
-        #     assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'CUB_original':
-            params.num_classes = 200
-        elif params.dataset == 'cars_original':
-            params.num_classes = 196
-        elif params.dataset == 'aircrafts_original':
-            params.num_classes = 100
-        elif params.dataset == 'dogs_original':
-            params.num_classes = 120
-        elif params.dataset == 'flowers_original':
-            params.num_classes = 102
-        elif params.dataset == 'miniImagenet':
-            params.num_classes = 100
-        elif params.dataset == 'tieredImagenet':
-            params.num_classes = 608
-
-
-        if params.method == 'baseline':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes, \
-                                            jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, tracking=params.tracking)
-        elif params.method == 'baseline++':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes, \
-                                            loss_type = 'dist', jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, tracking=params.tracking)
-
-    elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
+    if params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(params.n_query * params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
         print('n_query:',n_query)
         print("semi-sup is: ", params.semi_sup)
@@ -296,8 +224,7 @@ if __name__=='__main__':
         params.checkpoint_dir = '%s/checkpoints/%s/%s_%s_%s' %(configs.save_dir, params.dataset, params.date, params.model, params.method)
     if params.train_aug:
         params.checkpoint_dir += '_aug'
-    if not params.method  in ['baseline', 'baseline++']: 
-        params.checkpoint_dir += '_%dway_%dshot_%dquery' %( params.train_n_way, params.n_shot, params.n_query)
+    params.checkpoint_dir += '_%dway_%dshot_%dquery' %( params.train_n_way, params.n_shot, params.n_query)
 
     params.checkpoint_dir += '_%d'%image_size
     
@@ -353,10 +280,6 @@ if __name__=='__main__':
     stop_epoch = params.stop_epoch
     if params.method == 'maml' or params.method == 'maml_approx' :
         stop_epoch = params.stop_epoch * model.n_task #maml use multiple tasks in one update 
-    ## Use Google paper setting
-    if params.method == 'baseline' and 'original' in params.dataset:
-        stop_epoch = int(20000/len(base_loader))
-        print('train 20000 iters which is '+str(stop_epoch)+' epoch')
 
     if params.resume:
         resume_file = get_resume_file(params.checkpoint_dir)
@@ -375,25 +298,6 @@ if __name__=='__main__':
         wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners", id=params.run_name, resume=True)        
         wandb.watch(model)
 
-    elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
-        baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')
-        if params.train_aug:
-            baseline_checkpoint_dir += '_aug'
-        warmup_resume_file = get_resume_file(baseline_checkpoint_dir)
-        tmp = torch.load(warmup_resume_file)
-        if tmp is not None: 
-            state = tmp['state']
-            state_keys = list(state.keys())
-            for i, key in enumerate(state_keys):
-                if "feature." in key:
-                    newkey = key.replace("feature.","")  # an architecture model has attribute 'feature', load architecture feature to backbone by casting name from 'feature.trunk.xx' to 'trunk.xx'  
-                    state[newkey] = state.pop(key)
-                else:
-                    state.pop(key)
-            model.feature.load_state_dict(state)
-        else:
-            raise ValueError('No warm_up file')
-    
     if params.loadfile != '':
         print('Loading model from: ' + params.loadfile)
         checkpoint = torch.load(params.loadfile)
@@ -432,12 +336,9 @@ if __name__=='__main__':
         checkpoint_dir = params.checkpoint_dir
         if params.save_iter != -1:
             modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
-        elif params.method in ['baseline', 'baseline++'] :
-            modelfile   = get_resume_file(checkpoint_dir)
         else:
-            modelfile   = get_best_file(checkpoint_dir)
+            modelfile   = get_best_file(checkpoint_dir) # NOTE: Can also be tested with the last file
 
-    # if not params.method in ['baseline', 'baseline++'] :
     if params.method in ['maml', 'maml_approx']:
         if modelfile is not None:
             tmp = torch.load(modelfile)
@@ -489,10 +390,7 @@ if __name__=='__main__':
             timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
             aug_str = '-aug' if params.train_aug else ''
             aug_str += '-adapted' if params.adaptation else ''
-            if params.method in ['baseline', 'baseline++'] :
-                exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
-            else:
-                exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
+            exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
             acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
             f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
