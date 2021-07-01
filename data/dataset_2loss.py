@@ -162,7 +162,7 @@ class SetDataset:
         self.grey = grey
         self.low_res = low_res
         self.semi_sup = semi_sup
-        
+
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
  
@@ -178,7 +178,7 @@ class SetDataset:
         if semi_sup:
             self.sub_meta_semi_sup = {}
             for y in self.cl_list:
-                semi_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), 0.5 * len(self.sub_meta[y]))
+                semi_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), int(0.5 * len(self.sub_meta[y])))
                 self.sub_meta_semi_sup[y].extend([self.sub_meta[y][x] for x in semi_sup_indices])
                 for idx in semi_sup_indices:
                     self.sub_meta[y].pop(idx)

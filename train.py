@@ -157,10 +157,11 @@ if __name__=='__main__':
         base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.bs, jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
         if params.dataset_unlabel is not None:
             base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
-            print("base file for unlabeled dataset is:", base_file_u)
+            print("base file for self-supervision is:", base_file_u)
 
             val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
-            print("val file for unlabeled dataset is:", val_file_u)
+            print("val file for self-supervision is:", val_file_u)
+
             base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
             val_loader_u     = base_datamgr_u.get_data_loader( val_file_u , aug = False )
 
