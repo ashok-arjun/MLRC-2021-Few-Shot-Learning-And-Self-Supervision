@@ -191,7 +191,7 @@ class SetDataset:
         for cl in self.cl_list:
             sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform, jigsaw=self.jigsaw, \
                                     transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
-                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size, sub_meta_semi_sup=self.sub_meta_semi_sup[cl])
+                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size, sub_meta_semi_sup=self.sub_meta_semi_sup[cl] if self.semi_sup else None)
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
     def __getitem__(self,i):

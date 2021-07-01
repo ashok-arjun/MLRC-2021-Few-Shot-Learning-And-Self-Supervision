@@ -201,6 +201,8 @@ class ProtoNet(MetaTemplate):
 
         i = 0
 
+        iter_num = len(loader)
+
         for i, inputs in enumerate(loader):
 
             x = inputs[0] if not base_loader_u else inputs[0][0]
@@ -229,6 +231,8 @@ class ProtoNet(MetaTemplate):
                     correct_this, correct_this_jigsaw, count_this, count_this_jigsaw = self.correct(x, aux_inputs[2], aux_inputs[3], semi_inputs=semi_inputs )
                 elif self.rotation:
                     correct_this, correct_this_rotation, count_this, count_this_rotation = self.correct(x, aux_inputs[2], aux_inputs[3], semi_inputs=semi_inputs )
+                else:
+                    correct_this, count_this = self.correct(x, semi_inputs=semi_inputs )
             else:
                 correct_this, count_this = self.correct(x, semi_inputs=semi_inputs )
             acc_all.append(correct_this/ count_this*100)

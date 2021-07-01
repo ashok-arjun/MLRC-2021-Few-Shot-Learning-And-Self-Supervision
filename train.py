@@ -75,6 +75,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
             raise Exception("avg_loss is: ", avg_loss)
 
         if epoch % eval_interval == 0 or epoch == stop_epoch - 1: 
+            pbar.write("Validating...")
             model.eval()
             if not os.path.isdir(params.checkpoint_dir):
                 os.makedirs(params.checkpoint_dir)
@@ -133,6 +134,9 @@ if __name__=='__main__':
     val_file   = configs.data_dir[params.dataset] + 'val.json' 
     test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
+    test_iter_num = 600
+
+
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
             image_size = 28
@@ -183,7 +187,7 @@ if __name__=='__main__':
 
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        test_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 600, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
+        test_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = test_iter_num, **test_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
         test_loader              = test_datamgr.get_data_loader( test_file, aug = False)    
 
         if params.method == 'protonet':
@@ -329,7 +333,6 @@ if __name__=='__main__':
     else:
         split_str = split
 
-    iter_num = 600
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     acc_all = []
 
@@ -358,7 +361,7 @@ if __name__=='__main__':
             model.feature.load_state_dict(tmp['state'])
         print('modelfile:',modelfile)
 
-        datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
+        datamgr         = SetDataManager(image_size, n_eposide = test_iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
         loadfile = configs.data_dir[params.dataset] + split + '.json'
         novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
         if params.adaptation:
@@ -384,7 +387,12 @@ if __name__=='__main__':
         model.feature = model.feature.cuda()
         model.eval()
 
-        acc_mean, acc_std = model.test_loop( test_loader, semi_sup=semi_sup, proto_only=True)        
+        if params.semi_sup:
+            print("Performing superviesd + semi-supervised inference...")
+        else:
+            print("Performing inference...")
+
+        acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
 
         wandb.log({"test/acc": np.mean(acc)})
 
@@ -393,7 +401,7 @@ if __name__=='__main__':
             aug_str = '-aug' if params.train_aug else ''
             aug_str += '-adapted' if params.adaptation else ''
             exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-            acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+            acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(test_iter_num, acc_mean, 1.96* acc_std/np.sqrt(test_iter_num))
             f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
 
@@ -416,16 +424,16 @@ if __name__=='__main__':
         # import data.feature_loader as feat_loader
         # cl_data_file = feat_loader.init_loader(novel_file)
         
-        # for i in range(0, iter_num):
+        # for i in range(0, test_iter_num):
         #     acc = feature_evaluation(cl_data_file, model, n_query = 16, adaptation = params.adaptation, **few_shot_params)
         #     acc_all.append(acc)
 
         # acc_all  = np.asarray(acc_all)
         # acc_mean = np.mean(acc_all)
         # acc_std  = np.std(acc_all)
-        # print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+        # print('%d Test Acc = %4.2f%% +- %4.2f%%' %(test_iter_num, acc_mean, 1.96* acc_std/np.sqrt(test_iter_num)))
 
-        # wandb.log({"test/acc": np.mean(acc_all), "episodes": iter_num})
+        # wandb.log({"test/acc": np.mean(acc_all), "episodes": test_iter_num})
 
         # with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
         #     timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
@@ -435,7 +443,7 @@ if __name__=='__main__':
         #         exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
         #     else:
         #         exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-        #     acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+        #     acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(test_iter_num, acc_mean, 1.96* acc_std/np.sqrt(test_iter_num))
         #     f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
 
 
