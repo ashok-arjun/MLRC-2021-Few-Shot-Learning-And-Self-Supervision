@@ -394,7 +394,7 @@ if __name__=='__main__':
 
         acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
 
-        wandb.log({"test/acc": np.mean(acc)})
+        wandb.log({"test/acc": acc_mean})
 
         with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
             timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
