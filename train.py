@@ -134,7 +134,9 @@ if __name__=='__main__':
     val_file   = configs.data_dir[params.dataset] + 'val.json' 
     test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
-    test_iter_num = 100 # NOTE: change to `600`
+    train_iter_num = 20 # NOTE: change to `100`
+    val_iter_num = 10 # NOTE: change to `100`
+    test_iter_num = 5 # NOTE: change to `600`
 
 
     if 'Conv' in params.model:
@@ -176,12 +178,12 @@ if __name__=='__main__':
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda,  rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
+        base_datamgr            = SetDataManager(image_size, n_query = n_query, n_eposide = train_iter_num, **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         val_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda, rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = 100, **val_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, n_eposide = val_iter_num, **val_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor     
 
@@ -395,6 +397,9 @@ if __name__=='__main__':
         acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
 
         wandb.log({"test/acc": acc_mean})
+
+        out_dir = os.path.join( checkpoint_dir.replace("checkpoints","results"))
+        os.makedirs(out_dir, exist_ok=True)
 
         with open(os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +"_test.txt") , 'a') as f:
             timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
