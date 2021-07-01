@@ -1,0 +1,1 @@
+Time: 20210701-191131, Setting: CUB-novel-resnet18-protonet-aug 5shot 5way_train 5way_test, Acc: 2 Test Acc = 23.75% +- 5.20% 

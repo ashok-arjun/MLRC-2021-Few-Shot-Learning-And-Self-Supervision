@@ -124,9 +124,9 @@ class ProtoNet(MetaTemplate):
 
             if base_loader_u:
                 aux_inputs = inputs[1]
-                aux_inputs[2] = aux_inputs[2].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[2].size()[2:])
+                aux_inputs[2] = aux_inputs[2].view(self.n_way, self.n_support + self.n_query, *aux_inputs[2].size()[1:])
                 if len(aux_inputs) > 4:
-                    aux_inputs[4] = aux_inputs[4].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[4].size()[2:])
+                    aux_inputs[4] = aux_inputs[4].view(self.n_way, self.n_support + self.n_query, *aux_inputs[4].size()[1:])
             else:
                 aux_inputs = inputs
 
@@ -219,9 +219,9 @@ class ProtoNet(MetaTemplate):
                 
             if base_loader_u:
                 aux_inputs = inputs[1]
-                aux_inputs[2] = aux_inputs[2].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[2].size()[2:])
+                aux_inputs[2] = aux_inputs[2].view(self.n_way, self.n_support + self.n_query, *aux_inputs[2].size()[1:])
                 if len(aux_inputs) > 4:
-                    aux_inputs[4] = aux_inputs[4].view(self.n_way * (self.n_support + self.n_query), *aux_inputs[4].size()[2:])
+                    aux_inputs[4] = aux_inputs[4].view(self.n_way, self.n_support + self.n_query, *aux_inputs[4].size()[1:])
             else:
                 aux_inputs = inputs
 
