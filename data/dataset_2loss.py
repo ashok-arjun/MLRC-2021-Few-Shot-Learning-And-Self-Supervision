@@ -178,10 +178,9 @@ class SetDataset:
         if semi_sup:
             self.sub_meta_semi_sup = {}
             for y in self.cl_list:
-                semi_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), int(0.5 * len(self.sub_meta[y])))
-                self.sub_meta_semi_sup[y].extend([self.sub_meta[y][x] for x in semi_sup_indices])
-                for idx in semi_sup_indices:
-                    self.sub_meta[y].pop(idx)
+                semi_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), k=int(0.5 * len(self.sub_meta[y])))
+                self.sub_meta_semi_sup[y] = [self.sub_meta[y][x] for x in semi_sup_indices]
+                self.sub_meta[y] = [x for i, x in enumerate(self.sub_meta[y]) if i not in semi_sup_indices]
 
         self.sub_dataloader = [] 
         sub_data_loader_params = dict(batch_size = batch_size,
@@ -263,10 +262,9 @@ class SubDataset:
 
         img = self.transform(img)
         target = self.target_transform(self.cl)        
-
     
         if self.sub_meta_semi_sup:
-            semi_sup_img_path = os.path.join(self.sub_meta_semi_sup[choices(self.sub_meta_semi_sup, 1)[0]])
+            semi_sup_img_path = os.path.join(self.sub_meta_semi_sup[choices(list(range(0,len(self.sub_meta_semi_sup))), k=1)[0]])
 
             if self.grey:
                 semi_sup_img = Image.open(semi_sup_img_path).convert('L').convert('RGB')
@@ -282,25 +280,18 @@ class SubDataset:
             
             semi_sup_img = self.transform(semi_sup_img)
 
-            if self.jigsaw and self.rotation:
-                return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels, semi_sup_img
-            elif self.jigsaw:
-                return img, target, patches, order, semi_sup_img
-            elif self.rotation:
-                return img, target, torch.stack(rotated_imgs, dim=0), rotation_labels, semi_sup_img
-            else:
-                return img, target, semi_sup_img
+            img = img.unsqueeze(0)
+            semi_sup_img = semi_sup_img.unsqueeze(0)
+            img = torch.cat([img, semi_sup_img], dim=0)
 
+        if self.jigsaw and self.rotation:
+            return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels
+        elif self.jigsaw:
+            return img, target, patches, order
+        elif self.rotation:
+            return img, target, torch.stack(rotated_imgs, dim=0), rotation_labels
         else:
-
-            if self.jigsaw and self.rotation:
-                return img, target, patches, order, torch.stack(rotated_imgs, dim=0), rotation_labels
-            elif self.jigsaw:
-                return img, target, patches, order
-            elif self.rotation:
-                return img, target, torch.stack(rotated_imgs, dim=0), rotation_labels
-            else:
-                return img, target
+            return img, target
 
     def __len__(self):
         return len(self.sub_meta)

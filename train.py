@@ -134,7 +134,7 @@ if __name__=='__main__':
     val_file   = configs.data_dir[params.dataset] + 'val.json' 
     test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
-    test_iter_num = 600
+    test_iter_num = 100 # NOTE: change to `600`
 
 
     if 'Conv' in params.model:

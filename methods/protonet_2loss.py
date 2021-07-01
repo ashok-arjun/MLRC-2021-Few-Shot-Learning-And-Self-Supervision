@@ -107,8 +107,14 @@ class ProtoNet(MetaTemplate):
         for iter_num, inputs in enumerate(loader):
         
             self.global_count += 1
+
             x = inputs[0] if not base_loader_u else inputs[0][0]
-            # import ipdb; ipdb.set_trace()
+
+            if semi_sup:
+                semi_inputs = x[:, :, 1]
+                x = x[:, :, 0]
+            else:
+                semi_inputs = None
 
             self.n_query = x.size(1) - self.n_support           
             if self.change_way:
@@ -120,16 +126,6 @@ class ProtoNet(MetaTemplate):
                 aux_inputs = inputs[1]
             else:
                 aux_inputs = inputs
-
-            if semi_sup:
-                if self.jigsaw and self.rotation:
-                    semi_inputs = inputs[6]
-                elif self.jigsaw or self.rotation:
-                    semi_inputs = inputs[4]
-                else:
-                    semi_inputs = inputs[2]
-            else:
-                semi_inputs = None
 
             if self.jigsaw and self.rotation:
                 loss_proto, loss_jigsaw, loss_rotation, acc, acc_jigsaw, acc_rotation = self.set_forward_loss( x, aux_inputs[2], aux_inputs[3], aux_inputs[4], aux_inputs[5], semi_inputs=semi_inputs )# torch.Size([5, 21, 9, 3, 75, 75]), torch.Size([5, 21])
@@ -206,6 +202,14 @@ class ProtoNet(MetaTemplate):
         for i, inputs in enumerate(loader):
 
             x = inputs[0] if not base_loader_u else inputs[0][0]
+
+            if semi_sup:
+                semi_inputs = x[:, :, 1]
+                x = x[:, :, 0]
+            else:
+                semi_inputs = None
+
+
             self.n_query = x.size(1) - self.n_support
             if self.change_way:
                 self.n_way  = x.size(0)
@@ -213,16 +217,6 @@ class ProtoNet(MetaTemplate):
                 aux_inputs = inputs[1]
             else:
                 aux_inputs = inputs
-
-            if semi_sup:
-                if self.jigsaw and self.rotation:
-                    semi_inputs = inputs[6]
-                elif self.jigsaw or self.rotation:
-                    semi_inputs = inputs[4]
-                else:
-                    semi_inputs = inputs[2]
-            else:
-                semi_inputs = None
 
             if not proto_only:
                 if self.jigsaw and self.rotation:
@@ -322,6 +316,7 @@ class ProtoNet(MetaTemplate):
 
         if semi_inputs != None:            
             semi_inputs = semi_inputs.cuda()
+            semi_inputs = semi_inputs.contiguous().view( self.n_way * (self.n_support + self.n_query), *semi_inputs.size()[2:]) 
             semi_z = self.feature(semi_inputs)
             semi_z = semi_z.view(semi_z.shape[0], -1)
             inner_dist = -euclidean_dist(semi_z, z_proto)
@@ -356,6 +351,7 @@ class ProtoNet(MetaTemplate):
 
         if semi_inputs != None:            
             semi_inputs = semi_inputs.cuda()
+            semi_inputs = semi_inputs.contiguous().view( self.n_way * (self.n_support + self.n_query), *semi_inputs.size()[2:]) 
             semi_z = self.feature(semi_inputs)
             semi_z = semi_z.view(semi_z.shape[0], -1)
             inner_dist = -euclidean_dist(semi_z, z_proto)
