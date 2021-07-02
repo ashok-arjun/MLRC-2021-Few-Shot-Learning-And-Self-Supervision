@@ -107,8 +107,6 @@ def parse_args(script):
 
         parser.add_argument('--sup_ratio', type=float, default=1.0) 
 
-        parser.add_argument('--semi_sup', type=str2bool, nargs='?', default=False, const=True, help='semi_sup') 
-
         parser.add_argument("--dataset_unlabel_combine", nargs="+")
 
     

@@ -167,7 +167,14 @@ if __name__=='__main__':
 
             if params.dataset_unlabel_combine:
                 # a list of datasets will be there, and we need to fuse them inside get_data_loader
-                print('files for self-supervision are: ', params.dataset_unlabel_combine)
+                print('datasets for self-supervision are: ', params.dataset_unlabel_combine)
+
+                base_file_u = [os.path.join('filelists', x, 'base.json') for x in params.dataset_unlabel_combine]
+                print("base file for self-supervision is:", base_file_u)
+
+                val_file_u = [os.path.join('filelists', x, 'val.json') for x in params.dataset_unlabel_combine]
+                print("val file for self-supervision is:", val_file_u)
+
             else:
                 base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
                 print("base file for self-supervision is:", base_file_u)
@@ -175,8 +182,8 @@ if __name__=='__main__':
                 val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
                 print("val file for self-supervision is:", val_file_u)
 
-                base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
-                val_loader_u     = val_datamgr_u.get_data_loader( val_file_u , aug = False )
+            base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
+            val_loader_u     = val_datamgr_u.get_data_loader( val_file_u , aug = False )
 
         else:
             base_loader_u     = None

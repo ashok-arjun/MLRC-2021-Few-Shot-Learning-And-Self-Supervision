@@ -24,6 +24,10 @@ config_dict = {
     }
 }
 
+# TO ADD
+
+# sup_ratio, semi_sup, params.dataset_combine
+
 if __name__ == "__main__":
     sweep_id = wandb.sweep(config_dict, entity="meta-learners", project="FSL-SSL")
     wandb.agent(sweep_id, count=15)
