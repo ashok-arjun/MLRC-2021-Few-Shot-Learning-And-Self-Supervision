@@ -284,7 +284,7 @@ if __name__=='__main__':
         params.checkpoint_dir += '_semi_sup%.2f'%(params.lbda)
 
     if params.dataset_unlabel:
-        params.checkpoint_dir += '_dataset_unlabel=%s'%(params.dataset_unlabel)
+        params.checkpoint_dir += '_dataset_unlabel=%s'%("".join(params.dataset_unlabel))
 
     params.checkpoint_dir += '_sup_ratio=%d'%(params.sup_ratio)
 
