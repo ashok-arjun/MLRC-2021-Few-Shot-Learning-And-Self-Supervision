@@ -180,7 +180,7 @@ class SetDataset:
         
         if sup_ratio < 1.0:
             
-            print("sup ratio: %d; self-sup ratio: %d" % (sup_ratio, 1-sup_ratio))
+            print("sup ratio: %0.2f; self-sup ratio: %0.2f" % (sup_ratio, 1-sup_ratio))
 
             self.sub_meta_self_sup = {}
 

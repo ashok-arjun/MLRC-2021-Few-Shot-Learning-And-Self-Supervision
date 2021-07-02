@@ -107,8 +107,6 @@ def parse_args(script):
 
         parser.add_argument('--sup_ratio', type=float, default=1.0) 
 
-        parser.add_argument("--dataset_unlabel_combine", nargs="+")
-
     
     # elif script == 'save_features':
     #     parser.add_argument('--test_bs'          , default=64, type=int,  help='batch size for testing w/o batchnorm')
