@@ -164,14 +164,19 @@ if __name__=='__main__':
         val_datamgr_u    = SimpleDataManager(image_size, batch_size = params.test_n_way * (params.n_shot + n_query), jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
 
         if params.dataset_unlabel is not None:
-            base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
-            print("base file for self-supervision is:", base_file_u)
 
-            val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
-            print("val file for self-supervision is:", val_file_u)
+            if params.dataset_unlabel_combine:
+                # a list of datasets will be there, and we need to fuse them inside get_data_loader
+                print('files for self-supervision are: ', params.dataset_unlabel_combine)
+            else:
+                base_file_u = os.path.join('filelists', params.dataset_unlabel, 'base.json')
+                print("base file for self-supervision is:", base_file_u)
 
-            base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
-            val_loader_u     = val_datamgr_u.get_data_loader( val_file_u , aug = False )
+                val_file_u = os.path.join('filelists', params.dataset_unlabel, 'val.json')
+                print("val file for self-supervision is:", val_file_u)
+
+                base_loader_u     = base_datamgr_u.get_data_loader( base_file_u , aug = params.train_aug )
+                val_loader_u     = val_datamgr_u.get_data_loader( val_file_u , aug = False )
 
         else:
             base_loader_u     = None
@@ -180,7 +185,7 @@ if __name__=='__main__':
         # train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, \
                                         jigsaw=params.jigsaw, lbda=params.lbda,  rotation=params.rotation, lbda_jigsaw=params.lbda_jigsaw, lbda_rotation=params.lbda_rotation) 
-        base_datamgr            = SetDataManager(image_size, n_query = n_query, n_eposide = train_iter_num, **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, semi_sup=params.semi_sup)
+        base_datamgr            = SetDataManager(image_size, n_query = n_query, n_eposide = train_iter_num, **train_few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res, sup_ratio=params.sup_ratio, semi_sup=params.semi_sup)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
          
         val_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot, \
@@ -267,7 +272,12 @@ if __name__=='__main__':
         params.checkpoint_dir += '_semi_sup%.2f'%(params.lbda)
 
     if params.dataset_unlabel:
-        params.checkpoint_dir += '_dataset_unlabel=%s'%(params.dataset_unlabel)
+        if params.dataset_unlabel_combine:
+            params.checkpoint_dir += '_dataset_unlabel_combine=%s'%(params.dataset_unlabel_combine)
+        else:
+            params.checkpoint_dir += '_dataset_unlabel=%s'%(params.dataset_unlabel)
+
+    params.checkpoint_dir += '_sup_ratio=%d'%(params.sup_ratio)
 
     params.checkpoint_dir += params.optimization
 
@@ -326,7 +336,6 @@ if __name__=='__main__':
     train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u, val_loader_u, params.semi_sup)
 
 
-    ##### save_features (except maml) and test, added by me #####
     split = 'novel'
     if params.save_iter != -1:
         split_str = split + "_" +str(params.save_iter)

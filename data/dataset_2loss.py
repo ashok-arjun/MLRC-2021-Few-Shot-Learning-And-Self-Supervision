@@ -153,7 +153,7 @@ class SimpleDataset:
 
 class SetDataset:
     def __init__(self, data_file, batch_size, transform, jigsaw=False, \
-                transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None, semi_sup=False):
+                transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None, sup_ratio=1.0, semi_sup=False):
         self.jigsaw = jigsaw
         self.transform_jigsaw = transform_jigsaw
         self.transform_patch_jigsaw = transform_patch_jigsaw
@@ -175,12 +175,25 @@ class SetDataset:
         for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
             self.sub_meta[y].append(x)
         
+        if sup_ratio < 1.0:
+            
+            print("sup ratio: %d; self-sup ratio: %d" % (sup_ratio, 1-sup_ratio))
+
+            self.sub_meta_self_sup = {}
+
+            for y in self.cl_list:
+                self_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), k=int(1-sup_ratio) * len(self.sub_meta[y]))
+                self.sub_meta_self_sup[y] = [self.sub_meta[y][x] for x in self_sup_indices]
+                self.sub_meta[y] = [x for i, x in enumerate(self.sub_meta[y]) if i not in self_sup_indices]
+
         if semi_sup:
+            print("semi_sup called in dataset_2loss")
             self.sub_meta_semi_sup = {}
             for y in self.cl_list:
                 semi_sup_indices = choices(list(range(0, len(self.sub_meta[y]))), k=int(0.5 * len(self.sub_meta[y])))
                 self.sub_meta_semi_sup[y] = [self.sub_meta[y][x] for x in semi_sup_indices]
                 self.sub_meta[y] = [x for i, x in enumerate(self.sub_meta[y]) if i not in semi_sup_indices]
+                print("class: %d; semi_sup: 50%% - %d images; sup: 50%% - %d images" % (y, len(self.sub_meta_semi_sup[y]), len(self.sub_meta[y])))
 
         self.sub_dataloader = [] 
         sub_data_loader_params = dict(batch_size = batch_size,
@@ -190,7 +203,7 @@ class SetDataset:
         for cl in self.cl_list:
             sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform, jigsaw=self.jigsaw, \
                                     transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
-                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size, sub_meta_semi_sup=self.sub_meta_semi_sup[cl] if self.semi_sup else None)
+                                    rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size, sub_meta_semi_sup=self.sub_meta_semi_sup[cl] if self.semi_sup else None, sub_meta_self_sup=self.sub_meta_self_sup[cl] if sup_ratio < 1.0 else None)
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
     def __getitem__(self,i):
@@ -201,7 +214,7 @@ class SetDataset:
 
 class SubDataset:
     def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity, \
-                jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None, sub_meta_semi_sup=None):
+                jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, rotation=False, isAircraft=False, grey=False, low_res=False, image_size=None, sub_meta_semi_sup=None, sub_meta_self_sup=None):
         self.sub_meta = sub_meta
         self.cl = cl 
         self.transform = transform
@@ -228,6 +241,7 @@ class SubDataset:
                                                     )
 
         self.sub_meta_semi_sup = sub_meta_semi_sup
+        self.sub_meta_self_sup = sub_meta_self_sup
 
     def __getitem__(self,i):
         image_path = os.path.join(self.sub_meta[i])
@@ -249,14 +263,19 @@ class SubDataset:
             ## crop the banner
             img = img.crop((0,0,img.size[0],img.size[1]-20))
 
+        if self.sub_meta_self_sup:
+            img_ss = os.path.join(self.sub_meta_self_sup[choices(list(range(0,len(self.sub_meta_self_sup))), k=1)[0]])
+        else:
+            img_ss = img
+
         if self.jigsaw:
-            patches, order = get_patches(img, self.transform_jigsaw, self.transform_patch_jigsaw, self.permutations)
+            patches, order = get_patches(img_ss, self.transform_jigsaw, self.transform_patch_jigsaw, self.permutations)
         if self.rotation:
             rotated_imgs = [
-                    self.transform(img),
-                    self.transform(img.rotate(90,expand=True)),
-                    self.transform(img.rotate(180,expand=True)),
-                    self.transform(img.rotate(270,expand=True))
+                    self.transform(img_ss),
+                    self.transform(img_ss.rotate(90,expand=True)),
+                    self.transform(img_ss.rotate(180,expand=True)),
+                    self.transform(img_ss.rotate(270,expand=True))
                 ]
             rotation_labels = torch.LongTensor([0, 1, 2, 3])
 
