@@ -368,7 +368,7 @@ class ResNet(nn.Module):
         return out
 
 def Conv4():
-    return ConvNet(4,flatten=False)
+    return ConvNet(4,flatten=True)
 
 def Conv6():
     return ConvNet(6)

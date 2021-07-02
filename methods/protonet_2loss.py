@@ -24,7 +24,7 @@ from utils.io_utils import data_prefetcher
 
 
 class ProtoNet(MetaTemplate):
-    def __init__(self, model_func,  n_way, n_support, jigsaw=False, lbda=0.0, rotation=False, tracking=False, lbda_jigsaw=0.0, lbda_rotation=0.0, use_bn=True, pretrain=False):
+    def __init__(self, model_func,  n_way, n_support, jigsaw=False, lbda=0.0, rotation=False, tracking=False, lbda_jigsaw=0.0, lbda_rotation=0.0, use_bn=True, pretrain=False, model="resnet18"):
         super(ProtoNet, self).__init__( model_func,  n_way, n_support, use_bn, pretrain, tracking=tracking)
         self.loss_fn = nn.CrossEntropyLoss()
 
@@ -37,14 +37,12 @@ class ProtoNet(MetaTemplate):
         self.global_count = 0
         if self.jigsaw and self.rotation:
             self.fc6 = nn.Sequential()
-            # self.fc6.add_module('fc6_s1',nn.Linear(1024, 1024))#for conv4
-            self.fc6.add_module('fc6_s1',nn.Linear(512, 512))#for resnet
+            self.fc6.add_module('fc6_s1',nn.Linear(1024, 1024)) if model != "resnet18" else self.fc6.add_module('fc6_s1',nn.Linear(512, 512))#for resnet
             self.fc6.add_module('relu6_s1',nn.ReLU(inplace=True))
             self.fc6.add_module('drop6_s1',nn.Dropout(p=0.5))
 
             self.fc7_jigsaw = nn.Sequential()
-            # self.fc7.add_module('fc7',nn.Linear(9*1024,4096))#for conv4
-            self.fc7_jigsaw.add_module('fc7',nn.Linear(9*512,4096))#for resnet
+            self.fc7.add_module('fc7',nn.Linear(9*1024,4096)) if model != "resnet18" else self.fc7_jigsaw.add_module('fc7',nn.Linear(9*512,4096))#for resnet
             self.fc7_jigsaw.add_module('relu7',nn.ReLU(inplace=True))
             self.fc7_jigsaw.add_module('drop7',nn.Dropout(p=0.5))
 
@@ -52,8 +50,7 @@ class ProtoNet(MetaTemplate):
             self.classifier_jigsaw.add_module('fc8',nn.Linear(4096, 35))
 
             self.fc7_rotation = nn.Sequential()
-            # self.fc7.add_module('fc7',nn.Linear(9*1024,4096))#for conv4
-            self.fc7_rotation.add_module('fc7',nn.Linear(512,128))#for resnet
+            self.fc7.add_module('fc7',nn.Linear(9*1024,4096)) if model != "resnet18" else self.fc7_rotation.add_module('fc7',nn.Linear(512,128))#for resnet
             self.fc7_rotation.add_module('relu7',nn.ReLU(inplace=True))
             self.fc7_rotation.add_module('drop7',nn.Dropout(p=0.5))
 
@@ -61,14 +58,12 @@ class ProtoNet(MetaTemplate):
             self.classifier_rotation.add_module('fc8',nn.Linear(128, 4))
         elif self.jigsaw:
             self.fc6 = nn.Sequential()
-            # self.fc6.add_module('fc6_s1',nn.Linear(1024, 1024))#for conv4
-            self.fc6.add_module('fc6_s1',nn.Linear(512, 512))#for resnet
+            self.fc6.add_module('fc6_s1',nn.Linear(1024, 1024)) if model != "resnet18" else self.fc6.add_module('fc6_s1',nn.Linear(512, 512))#for resnet
             self.fc6.add_module('relu6_s1',nn.ReLU(inplace=True))
             self.fc6.add_module('drop6_s1',nn.Dropout(p=0.5))
 
             self.fc7 = nn.Sequential()
-            # self.fc7.add_module('fc7',nn.Linear(9*1024,4096))#for conv4
-            self.fc7.add_module('fc7',nn.Linear(9*512,4096))#for resnet
+            self.fc7.add_module('fc7',nn.Linear(9*1024,4096)) if model != "resnet18" else self.fc7.add_module('fc7',nn.Linear(9*512,4096))#for resnet
             self.fc7.add_module('relu7',nn.ReLU(inplace=True))
             self.fc7.add_module('drop7',nn.Dropout(p=0.5))
 
@@ -76,14 +71,12 @@ class ProtoNet(MetaTemplate):
             self.classifier.add_module('fc8',nn.Linear(4096, 35))
         elif self.rotation:
             self.fc6 = nn.Sequential()
-            # self.fc6.add_module('fc6_s1',nn.Linear(1024, 1024))#for conv4
-            self.fc6.add_module('fc6_s1',nn.Linear(512, 512))#for resnet
+            self.fc6.add_module('fc6_s1',nn.Linear(1024, 1024)) if model != "resnet18" else self.fc6.add_module('fc6_s1',nn.Linear(512, 512))#for resnet
             self.fc6.add_module('relu6_s1',nn.ReLU(inplace=True))
             self.fc6.add_module('drop6_s1',nn.Dropout(p=0.5))
 
             self.fc7 = nn.Sequential()
-            # self.fc7.add_module('fc7',nn.Linear(9*1024,4096))#for conv4
-            self.fc7.add_module('fc7',nn.Linear(512,128))#for resnet
+            self.fc7.add_module('fc7',nn.Linear(9*1024,4096)) if model != "resnet18" else self.fc7.add_module('fc7',nn.Linear(512,128))#for resnet            
             self.fc7.add_module('relu7',nn.ReLU(inplace=True))
             self.fc7.add_module('drop7',nn.Dropout(p=0.5))
 

@@ -143,8 +143,8 @@ if __name__=='__main__':
         if params.dataset in ['omniglot', 'cross_char']:
             image_size = 28
         else:
-            # image_size = 84
-            image_size = 255
+            image_size = 84
+            # image_size = 255
     else:
         # image_size = 224 #original setting
         # image_size = 256 #my setting
@@ -212,7 +212,7 @@ if __name__=='__main__':
         test_loader              = test_datamgr.get_data_loader( test_file, aug = False)    
 
         if params.method == 'protonet':
-            model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain, tracking=params.tracking)
+            model           = ProtoNet( model_dict[params.model], **train_few_shot_params , use_bn=(not params.no_bn), pretrain=params.pretrain, tracking=params.tracking, model=params.model)
         elif params.method in ['maml' , 'maml_approx']:
             backbone.ConvBlock.maml = True
             backbone.SimpleBlock.maml = True
