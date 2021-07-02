@@ -163,7 +163,10 @@ if __name__=='__main__':
         base_datamgr_u    = SimpleDataManager(image_size, batch_size = params.train_n_way * (params.n_shot + n_query), jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
         val_datamgr_u    = SimpleDataManager(image_size, batch_size = params.test_n_way * (params.n_shot + n_query), jigsaw=params.jigsaw, rotation=params.rotation, isAircraft=isAircraft, grey=params.grey, shuffle=True)
 
-        if params.dataset_unlabel is not None:
+        if params.dataset_unlabel is not None and (params.jigsaw or params.rotation):
+
+            if "," in params.dataset_unlabel:
+                params.dataset_unlabel = params.dataset_unlabel.split(",")
 
             if type(params.dataset_unlabel) is list:
                 # a list of datasets will be there, and we need to fuse them inside get_data_loader

@@ -65,12 +65,34 @@ def retrive_permutations(classes):
 
     return all_perm
 
+def combine_jsons(files):
+    meta = {'image_names': [], "image_labels": []}
+    label_count = 0
+    for file in files:
+        with open(file, 'r') as f:
+            data = json.load(f)
+            meta['image_names'].extend(data["image_names"])
+            image_labels = data["image_labels"]
+            label_map = {}
+            for label in list(set(image_labels)):
+                label_map[label] = label_count
+                label_count += 1
+            for i,label in enumerate(image_labels):
+                image_labels[i] = label_map[label]
+            meta["image_labels"].extend(image_labels)
+    return meta
+
 class SimpleDataset:
     def __init__(self, data_file, transform, target_transform=identity, \
                 jigsaw=False, transform_jigsaw=None, transform_patch_jigsaw=None, \
                 rotation=False, isAircraft=False, grey=False, return_name=False, low_res=False, image_size=None):
-        with open(data_file, 'r') as f:
-            self.meta = json.load(f)
+
+        if type(data_file) is list:
+            self.meta = combine_jsons(data_file)
+        else:
+            with open(data_file, 'r') as f:
+                self.meta = json.load(f)
+
         self.transform = transform
         self.target_transform = target_transform
 
@@ -164,7 +186,7 @@ class SetDataset:
         self.semi_sup = semi_sup
 
         if type(data_file) is list:
-            self.meta = self.combine_jsons(data_file)
+            self.meta = combine_jsons(data_file)
         else:
             with open(data_file, 'r') as f:
                 self.meta = json.load(f)
@@ -208,22 +230,6 @@ class SetDataset:
                                     transform_jigsaw=self.transform_jigsaw, transform_patch_jigsaw=self.transform_patch_jigsaw, \
                                     rotation=self.rotation, isAircraft=self.isAircraft, grey=self.grey, low_res=self.low_res, image_size=image_size, sub_meta_semi_sup=self.sub_meta_semi_sup[cl] if self.semi_sup else None, sub_meta_self_sup=self.sub_meta_self_sup[cl] if sup_ratio < 1.0 else None)
             self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
-
-    def combine_jsons(self, files):
-        meta = {'image_names': [], "image_labels": []}
-        label_count = 0
-        for file in files:
-            with open(file, 'r') as f:
-                data = json.load(f)
-                meta['image_names'].extend(data["image_names"])
-                image_labels = data["image_labels"]
-                label_map = {}
-                for label in unique(image_labels):
-                    label_map[label] = label_count
-                    label_count += 1
-                for i,label in enumerate(image_labels):
-                    image_labels[i] = label_map[label]
-        return meta
 
     def __getitem__(self,i):
         return next(iter(self.sub_dataloader[i]))
