@@ -33,6 +33,7 @@ from utils.utils import RunningAverage
 from tqdm import tqdm
 
 import wandb
+from dagshub import DAGsHubLogger
 
 try:
     from apex.parallel import DistributedDataParallel as DDP
@@ -67,7 +68,10 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
         end_time = time.time()
         
         wandb.log({"Epoch": epoch}, step=model.global_count)
-        wandb.log({"Epoch Time": end_time-start_time}, step=model.global_count)        
+        wandb.log({"Epoch Time": end_time-start_time}, step=model.global_count)
+        
+        logger.log_metrics({"Epoch": epoch}, step=model.global_count)
+        logger.log_metrics({"Epoch Time": end_time-start_time}, step=model.global_count)
         
         pbar.write(u'\u2713' + ' Epoch: %d; Time taken: %d sec.' % (epoch, end_time-start_time))
 
@@ -85,20 +89,32 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
+                
+                logger.log_metrics({'val/acc': acc}, step=model.global_count)
+                logger.log_metrics({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
+                logger.log_metrics({'val/acc_rotation': acc_rotation}, step=model.global_count)
 
             elif params.jigsaw:
                 acc, acc_jigsaw = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
 
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
+                
+                logger.log_metrics({'val/acc': acc}, step=model.global_count)
+                logger.log_metrics({'val/acc_jigsaw': acc_jigsaw}, step=model.global_count)
 
             elif params.rotation:
                 acc, acc_rotation = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
                 wandb.log({'val/acc': acc}, step=model.global_count)
                 wandb.log({'val/acc_rotation': acc_rotation}, step=model.global_count)
+                
+                logger.log_metrics({'val/acc': acc}, step=model.global_count)
+                logger.log_metrics({'val/acc_rotation': acc_rotation}, step=model.global_count)
             else:    
                 acc = model.test_loop( val_loader, base_loader_u=val_loader_u, semi_sup=semi_sup)
                 wandb.log({'val/acc': acc}, step=model.global_count)
+                
+                logger.log_metrics({'val/acc': acc}, step=model.global_count)
             if acc > max_acc : 
                 max_acc = acc
                 outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
@@ -113,7 +129,9 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
     pbar.close()
             
 if __name__=='__main__':    
-    torch.cuda.set_device(int(params.device[0])) 
+    torch.cuda.set_device(int(params.device[0]))
+    
+    logger = DAGsHubLogger(metrics_path="dagshub_logs/metrics.csv", hparams_path="dagshub_logs/params.yml")
 
     isAircraft = (params.dataset == 'aircrafts')
 
@@ -130,9 +148,9 @@ if __name__=='__main__':
         raise Exception("Unrecognized BN Type: ", print(params.bn_type), " of type ", type(params.bn_type))
 
 
-    base_file = configs.data_dir[params.dataset] + 'base.json' 
-    val_file   = configs.data_dir[params.dataset] + 'val.json' 
-    test_file   = configs.data_dir[params.dataset] + 'novel.json' 
+    base_file = configs.data_dir[params.dataset] + 'base.json'
+    val_file   = configs.data_dir[params.dataset] + 'val.json'
+    test_file   = configs.data_dir[params.dataset] + 'novel.json'
 
     train_iter_num = 100 # NOTE: should be `100`
     val_iter_num = 600 # NOTE: should be `100`
@@ -322,7 +340,7 @@ if __name__=='__main__':
 
         print("Resuming run %s from epoch %d" % (params.run_name, start_epoch))
 
-        wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners", id=params.run_name, resume=True)        
+        wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners", id=params.run_name, resume=True)
         wandb.watch(model)
 
     if params.loadfile != '':
@@ -345,6 +363,8 @@ if __name__=='__main__':
             wandb.watch(model)        
     
         train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u, val_loader_u, params.semi_sup)
+    
+    logger.log_hyperparams(vars(params))
 
 
     for fn in [get_resume_file, get_best_file]:
@@ -418,7 +438,10 @@ if __name__=='__main__':
 
             acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
 
-            if not params.only_test: wandb.log({"test/acc": acc_mean})
+            if not params.only_test:
+                wandb.log({"test/acc": acc_mean})
+                
+                logger.log_metrics({"test/acc": acc_mean})
 
             out_dir = os.path.join( checkpoint_dir.replace("checkpoints","results"))
 

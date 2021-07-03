@@ -4,3 +4,5 @@ numpy
 Pillow
 tqdm
 wandb
+dagshub
+dvc
