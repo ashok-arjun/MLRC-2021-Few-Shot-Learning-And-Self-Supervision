@@ -418,7 +418,7 @@ if __name__=='__main__':
 
             acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
 
-            if not only_test: wandb.log({"test/acc": acc_mean})
+            if not params.only_test: wandb.log({"test/acc": acc_mean})
 
             out_dir = os.path.join( checkpoint_dir.replace("checkpoints","results"))
 
