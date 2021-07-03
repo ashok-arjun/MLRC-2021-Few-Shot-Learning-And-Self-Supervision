@@ -161,3 +161,4 @@ CUB/*
 *.jpg
 *.jpeg
 .ipynb_checkpoints/*
+.vscode/
