@@ -134,9 +134,9 @@ if __name__=='__main__':
     val_file   = configs.data_dir[params.dataset] + 'val.json' 
     test_file   = configs.data_dir[params.dataset] + 'novel.json' 
 
-    train_iter_num = 2 # NOTE: should be `100`
-    val_iter_num = 2 # NOTE: should be `100`
-    test_iter_num = 2 # NOTE: should be `600`
+    train_iter_num = 100 # NOTE: should be `100`
+    val_iter_num = 600 # NOTE: should be `100`
+    test_iter_num = 600 # NOTE: should be `600`
 
 
     if 'Conv' in params.model:
@@ -335,37 +335,66 @@ if __name__=='__main__':
         print('Load model from:',params.loadfile)
         model.load_state_dict(pretrained_dict, strict=False)
 
-    if not params.resume:
+    if not params.only_test:
 
-        json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))        
-        wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners")        
-        wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
-        wandb.watch(model)        
-   
-    train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u, val_loader_u, params.semi_sup)
+        if not params.resume:
+
+            json.dump(vars(params), open(params.checkpoint_dir+'/configs.json','w'))        
+            wandb.init(config=vars(params), project="FSL-SSL", entity="meta-learners")        
+            wandb.run.name = wandb.run.id if not params.run_name else params.run_name        
+            wandb.watch(model)        
+    
+        train(base_loader, val_loader,  model, optimizer, start_epoch, stop_epoch, params, base_loader_u, val_loader_u, params.semi_sup)
 
 
-    split = 'novel'
-    if params.save_iter != -1:
-        split_str = split + "_" +str(params.save_iter)
-    else:
-        split_str = split
+    for fn in [get_resume_file, get_best_file]:
 
-    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
-    acc_all = []
+        print(fn)
 
-    if params.loadfile != '':
-        modelfile   = params.loadfile
-        checkpoint_dir = params.loadfile
-    else:
-        checkpoint_dir = params.checkpoint_dir
+        split = 'novel'
         if params.save_iter != -1:
-            modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
+            split_str = split + "_" +str(params.save_iter)
         else:
-            modelfile   = get_best_file(checkpoint_dir) # NOTE: Can also be tested with the last file
+            split_str = split
 
-    if params.method in ['maml', 'maml_approx']:
-        if modelfile is not None:
+        few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
+        acc_all = []
+
+        if params.loadfile != '':
+            modelfile   = params.loadfile
+            checkpoint_dir = params.loadfile
+        else:
+            checkpoint_dir = params.checkpoint_dir
+            if params.save_iter != -1:
+                modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
+            else:
+                modelfile   = fn(checkpoint_dir)
+
+        if params.method in ['maml', 'maml_approx']:
+            if modelfile is not None:
+                tmp = torch.load(modelfile)
+                state = tmp['state']
+                state_keys = list(state.keys())
+                for i, key in enumerate(state_keys):
+                    if "feature." in key:
+                        newkey = key.replace("feature.","")  # an architecture model has attribute 'feature', load architecture feature to backbone by casting name from 'feature.trunk.xx' to 'trunk.xx'
+                        state[newkey] = state.pop(key)
+                    else:
+                        state.pop(key)
+                # model.load_state_dict(tmp['state'], strict=False)
+                model.feature.load_state_dict(tmp['state'])
+            print('modelfile:',modelfile)
+
+            datamgr         = SetDataManager(image_size, n_eposide = test_iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
+            loadfile = configs.data_dir[params.dataset] + split + '.json'
+            novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
+            if params.adaptation:
+                model.task_update_num = 100 #We perform adaptation on MAML simply by updating more times.
+            model.eval()
+            acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
+            print(acc_mean, acc_std)
+        else:
+
             tmp = torch.load(modelfile)
             state = tmp['state']
             state_keys = list(state.keys())
@@ -375,53 +404,30 @@ if __name__=='__main__':
                     state[newkey] = state.pop(key)
                 else:
                     state.pop(key)
-            # model.load_state_dict(tmp['state'], strict=False)
-            model.feature.load_state_dict(tmp['state'])
-        print('modelfile:',modelfile)
 
-        datamgr         = SetDataManager(image_size, n_eposide = test_iter_num, n_query = 15 , **few_shot_params, isAircraft=isAircraft, grey=params.grey, low_res=params.low_res)
-        loadfile = configs.data_dir[params.dataset] + split + '.json'
-        novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
-        if params.adaptation:
-            model.task_update_num = 100 #We perform adaptation on MAML simply by updating more times.
-        model.eval()
-        acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
-        print(acc_mean, acc_std)
-    else:
+            model.feature.load_state_dict(state)
+            model.feature.eval()
+            model = model.cuda()
+            model.feature = model.feature.cuda()
+            model.eval()
 
-        tmp = torch.load(modelfile)
-        state = tmp['state']
-        state_keys = list(state.keys())
-        for i, key in enumerate(state_keys):
-            if "feature." in key:
-                newkey = key.replace("feature.","")  # an architecture model has attribute 'feature', load architecture feature to backbone by casting name from 'feature.trunk.xx' to 'trunk.xx'
-                state[newkey] = state.pop(key)
+            if params.semi_sup:
+                print("Performing supervised + semi-supervised inference...")
             else:
-                state.pop(key)
+                print("Performing inference...")
 
-        model.feature.load_state_dict(state)
-        model.feature.eval()
-        model = model.cuda()
-        model.feature = model.feature.cuda()
-        model.eval()
+            acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
 
-        if params.semi_sup:
-            print("Performing supervised + semi-supervised inference...")
-        else:
-            print("Performing inference...")
+            if not only_test: wandb.log({"test/acc": acc_mean})
 
-        acc_mean, acc_std = model.test_loop( test_loader, semi_sup=params.semi_sup, proto_only=True)        
+            out_dir = os.path.join( checkpoint_dir.replace("checkpoints","results"))
 
-        wandb.log({"test/acc": acc_mean})
+            os.makedirs(out_dir, exist_ok=True)
 
-        out_dir = os.path.join( checkpoint_dir.replace("checkpoints","results"))
-
-        os.makedirs(out_dir, exist_ok=True)
-
-        with open(os.path.join( checkpoint_dir.replace("checkpoints","results"), split_str +"_test.txt") , 'a') as f:
-            timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-            aug_str = '-aug' if params.train_aug else ''
-            aug_str += '-adapted' if params.adaptation else ''
-            exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-            acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(test_iter_num, acc_mean, 1.96* acc_std/np.sqrt(test_iter_num))
-            f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
+            with open(os.path.join( checkpoint_dir.replace("checkpoints","results"), split_str +"_test.txt") , 'a') as f:
+                timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                aug_str = '-aug' if params.train_aug else ''
+                aug_str += '-adapted' if params.adaptation else ''
+                exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
+                acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(test_iter_num, acc_mean, 1.96* acc_std/np.sqrt(test_iter_num))
+                f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )

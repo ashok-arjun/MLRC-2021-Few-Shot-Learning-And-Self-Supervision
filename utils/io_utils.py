@@ -107,7 +107,8 @@ def parse_args(script):
 
         parser.add_argument('--sup_ratio', type=float, default=1.0) 
 
-    
+        parser.add_argument('--only_test', type=str2bool, nargs='?', default=False, const=True) 
+
     # elif script == 'save_features':
     #     parser.add_argument('--test_bs'          , default=64, type=int,  help='batch size for testing w/o batchnorm')
     #     parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
