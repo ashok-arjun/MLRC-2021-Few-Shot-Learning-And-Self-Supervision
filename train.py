@@ -131,7 +131,7 @@ def train(base_loader, val_loader, model, optimizer, start_epoch, stop_epoch, pa
 if __name__=='__main__':    
     torch.cuda.set_device(int(params.device[0]))
     
-    logger = DAGsHubLogger(metrics_path="dagshub_logs/metrics.csv", hparams_path="dagshub_logs/params.yml")
+    logger = DAGsHubLogger(metrics_path="outputs/dh/metrics.csv", hparams_path="outputs/dh/params.yml")
 
     isAircraft = (params.dataset == 'aircrafts')
 
