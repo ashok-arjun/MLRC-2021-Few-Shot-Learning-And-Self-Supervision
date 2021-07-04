@@ -3,6 +3,7 @@
 import wandb
 
 config_dict = {
+    'name': 'Sweep_PN+MIN'
     'program': 'train.py',
     'method': 'random',
     'metric': {'goal': 'minimize', 'name': 'val_loss'},
@@ -12,6 +13,7 @@ config_dict = {
         'optimization': {'values': ['Adam', 'SGD']},
         'bn_type': {'values': [1, 2, 3]}       
     }
+    'run_name': 'PN+MIN_Sweep_Run'
 }
 
 if __name__ == "__main__":

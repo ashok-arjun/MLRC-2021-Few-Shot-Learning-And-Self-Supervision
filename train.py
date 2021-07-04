@@ -53,6 +53,8 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
     else:
        raise ValueError('Unknown optimization, please define by yourself')
 
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5) # Added by Arjun
+
     if params.amp:
         print("-----------Using mixed precision-----------") 
         model, optimizer = amp.initialize(model, optimizer)
@@ -71,7 +73,7 @@ def train(base_loader, val_loader, model, start_epoch, stop_epoch, params):
         
         model.train()
         model.train_loop(epoch, base_loader, optimizer, pbar=pbar, enable_amp=params.amp) #model are called by reference, no need to return 
-        
+        scheduler.step()
         end_time = time.time()
         
         wandb.log({"Epoch": epoch}, step=model.global_count)
