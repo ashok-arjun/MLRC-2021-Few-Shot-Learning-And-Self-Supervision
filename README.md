@@ -9,6 +9,7 @@ A reproduction of the paper [When Does Self-supervision Improve Few-shot Learnin
 
 As part of the [**ML Reproducibility Challenge Spring 2021**](https://paperswithcode.com/rc2020).
 
+**All the hyperparameters** obtained from our sweeps are also reported in section 7 below.
 
 # Table of contents
 
@@ -24,6 +25,7 @@ As part of the [**ML Reproducibility Challenge Spring 2021**](https://paperswith
 4. [Domain selection](#domain)
 5. [Conducting a sweep](#sweep)
 6. [Pretrained models](#pretrained)
+7. [Hyperparameters](#hyperparams)
 
 <div id='installation' />
 
@@ -229,3 +231,48 @@ You can download the `best_model.tar` from the `files` section in the W&B run, a
 1. Use the same command given in the W&B run, with `--device` altered to match your device.
 2. Add `--only_test=True`
 3. Add `--loadfile=PATH` where PATH denotes the path where you can downloaded the model.
+
+# 7. Hyperparameters
+
+| Dataset | Config | Way | Architecture | Learning Rate | Batch Norm Mode | Alpha | Alpha\_Jigsaw, Alpha\_Rotation |
+| ------- | ------ | --- | ------------ | ------------- | --------------- | ----- | ------------------------------ |
+| MIN     | plain  | 5   | Res          | 0.0002        | 1               | \-    |                                |
+| MIN     | jig    | 5   | Res          | 0.0002        | 2               | 0.6   |                                |
+| MIN     | rot    | 5   | Res          | 0.0004        | 2               | 0.6   |                                |
+| MIN     | jigrot | 5   | Res          | 0.0003        | 2               |       | (0.4, 0.5)                     |
+|         |        |     |              |               |                 |       |                                |
+| MIN     | plain  | 5   | Conv         | 0.003         | 1               | \-    |                                |
+| MIN     | jig    | 5   | Conv         | 0.002         | 2               | 0.35  |                                |
+| MIN     | rot    | 5   | Conv         | 0.003         | 2               | 0.4   |                                |
+|         |        |     |              |               |                 |       |                                |
+| MIN     | plain  | 20  | Res          | 0.0001        | 1               | \-    |                                |
+| MIN     | jig    | 20  | Res          | 0.001         | 2               | 0.5   |                                |
+| MIN     | rot    | 20  | Res          | 0.002         | 2               | 0.44  |                                |
+|         |        |     |              |               |                 |       |                                |
+| CUB     | plain  | 5   | Res          | 0.0015        | 1               | \-    |                                |
+| CUB     | rot    | 5   | Res          | 0.0023        | 2               | 0.65  |                                |
+| CUB     | jig    | 5   | Res          | 0.0018        | 2               | 0.33  |                                |
+| CUB     | jigrot | 5   | Res          | 0.0009        | 2               |       | (0.55,0.64)                    |
+|         |        |     |              |               |                 |       |                                |
+| CUB     | plain  | 5   | Conv         | 0.015         | 1               | \-    |                                |
+| CUB     | rot    | 5   | Conv         | 0.005         | 2               | 0.3   |                                |
+| CUB     | jig    | 5   | Conv         | 0.003         | 2               | 0.38  |                                |
+|         |        |     |              |               |                 |       |                                |
+| Cars    | jig    | 5   | Conv         | 0.004         | 2               | 0.52  |                                |
+| Cars    | rot    | 5   | conv         | 0.016         | 2               | 0.24  |                                |
+| Cars    | plain  | 5   | conv         | 0.01          | 1               | \-    |                                |
+|         |        |     |              |               |                 |       |                                |
+| Cars    | plain  | 5   | Res          | 0.0021        | 1               | \-    |                                |
+| Cars    | rot    | 5   | Res          | 0.0038        | 2               | 0.5   |                                |
+| Cars    | jig    | 5   | Res          | 0.0035        | 2               | 0.38  |                                |
+| Cars    | jigrot | 5   | Res          | 0.0012        | 2               |       | (0.35,0.43)                    |
+
+**NOTE:**
+
+`jig` refers to jigsaw, `rot` refers to rotation, `jigrot` refers to jigsaw+rotation.								
+																		
+`Conv` refers to the conv-4 architecture, `Res` refers to resnet-18.												
+
+`CUB`, `cars`, `MIN` refer to the respective datasets.																
+
+We always run for a large number of epochs - **600** for the small datasets was found to be sufficient, and **800** for miniImageNet. After this, we pick the model that performed best on the validation set, and evaluate it on the test set.																										
