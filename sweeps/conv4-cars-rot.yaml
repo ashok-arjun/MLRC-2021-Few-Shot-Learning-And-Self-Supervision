@@ -1,0 +1,54 @@
+method: random
+metric:
+  goal: maximize
+  name: val/acc
+name: cars_Conv4_rot
+parameters:
+  amp:
+    values:
+    - 0
+  bn_type:
+    values:
+    - 2
+  dataset:
+    values:
+    - cars
+  device:
+    values:
+    - "2"
+  image_size:
+    values:
+    - 84
+  lbda:
+    distribution: uniform
+    min: 0
+    max: 1
+  lr:
+    distribution: uniform
+    min: 0.0003
+    max: 0.03
+  method:
+    values:
+    - protonet
+  model:
+    values:
+    - Conv4
+  only_train:
+    values:
+    - 1
+  optimization:
+    values:
+    - Adam
+  rotation:
+    values:
+    - 1
+  save_model:
+    values:
+    - 0
+  stop_epoch:
+    values:
+    - 100
+  train_aug:
+    values:
+    - 1
+program: train.py
