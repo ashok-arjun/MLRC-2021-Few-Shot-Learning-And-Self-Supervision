@@ -24,8 +24,6 @@ As part of the [**ML Reproducibility Challenge Spring 2021**](https://paperswith
 4. [Domain selection](#domain)
 5. [Conducting a sweep](#sweep)
 6. [Pretrained models](#pretrained)
-7. [Results overview](#results)
-
 
 <div id='installation' />
 
@@ -231,8 +229,3 @@ You can download the `best_model.tar` from the `files` section in the W&B run, a
 1. Use the same command given in the W&B run, with `--device` altered to match your device.
 2. Add `--only_test=True`
 3. Add `--loadfile=PATH` where PATH denotes the path where you can downloaded the model.
-
- 
-<div id='results' />
-
-# 7. Results
